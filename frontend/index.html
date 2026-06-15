@@ -1,0 +1,3394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 驱动的竞品分析 Agent 协作系统</title>
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #647084;
+      --line: #dce3ef;
+      --blue: #3157d5;
+      --blue-soft: #e9efff;
+      --purple: #7b4ce3;
+      --purple-soft: #f0eafe;
+      --cyan: #0f91b8;
+      --green: #16845b;
+      --green-soft: #e7f7f0;
+      --amber: #b46b08;
+      --amber-soft: #fff4dd;
+      --rose: #c43d5e;
+      --rose-soft: #ffe8ee;
+      --shadow: 0 18px 42px rgba(31, 42, 68, 0.08);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(49, 87, 213, 0.08), rgba(246, 248, 252, 0) 320px),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px clamp(18px, 4vw, 48px);
+      background: rgba(246, 248, 252, 0.9);
+      border-bottom: 1px solid rgba(220, 227, 239, 0.82);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 230px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      box-shadow: 0 10px 22px rgba(49, 87, 213, 0.22);
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .brand span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .workspace-status {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+      gap: 8px 18px;
+      align-items: center;
+      min-width: 320px;
+      max-width: 560px;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .workspace-status b {
+      color: var(--ink);
+    }
+
+    .run-indicator {
+      grid-column: 1 / -1;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e8edf6;
+    }
+
+    .run-indicator-fill {
+      width: var(--run-progress, 0%);
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--blue), var(--purple));
+      transition: width 260ms ease;
+    }
+
+    .nav-pill {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      color: #344054;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 18px rgba(31, 42, 68, 0.04);
+    }
+
+    .nav-pill.active {
+      color: var(--blue);
+      border-color: rgba(49, 87, 213, 0.38);
+      background: var(--blue-soft);
+    }
+
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 26px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      color: #344054;
+      background: #f2f5fa;
+      border: 1px solid #e2e8f2;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .status-tag.running {
+      color: #1e409b;
+      background: var(--blue-soft);
+      border-color: rgba(49, 87, 213, 0.2);
+    }
+
+    .status-tag.done {
+      color: #0f5d41;
+      background: var(--green-soft);
+      border-color: rgba(22, 132, 91, 0.2);
+    }
+
+    .status-tag.waiting {
+      color: #5a6475;
+      background: #f4f7fb;
+    }
+
+    .status-tag.review {
+      color: #7a4b07;
+      background: var(--amber-soft);
+      border-color: rgba(180, 107, 8, 0.18);
+    }
+
+    .status-tag.rework {
+      color: #8a243e;
+      background: var(--rose-soft);
+      border-color: rgba(196, 61, 94, 0.2);
+    }
+
+    main {
+      width: min(1280px, calc(100vw - 36px));
+      margin: 0 auto;
+      padding: 30px 0 48px;
+    }
+
+    .page {
+      display: none;
+      animation: rise 260ms ease both;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .hero-copy {
+      min-height: 330px;
+      padding: clamp(24px, 4vw, 42px);
+      background:
+        linear-gradient(135deg, rgba(49, 87, 213, 0.97), rgba(123, 76, 227, 0.9)),
+        #223a92;
+      color: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-copy::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -92px auto;
+      width: 360px;
+      height: 220px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 44px),
+        linear-gradient(180deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 44px);
+      transform: rotate(-8deg);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      color: #ebf2ff;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      position: relative;
+      z-index: 1;
+      max-width: 850px;
+      margin-top: 24px;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      margin-top: 18px;
+      color: rgba(255,255,255,0.82);
+      font-size: 17px;
+      line-height: 1.7;
+    }
+
+    .collab-strip {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-top: 32px;
+    }
+
+    .collab-step {
+      min-height: 84px;
+      padding: 12px 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.12);
+      border-radius: 8px;
+    }
+
+    .collab-step b {
+      display: block;
+      font-size: 13px;
+      color: #fff;
+    }
+
+    .collab-step span {
+      display: block;
+      margin-top: 6px;
+      color: rgba(255,255,255,0.72);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .agent-chain {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .chain-node {
+      position: relative;
+      display: grid;
+      gap: 9px;
+      min-height: 170px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(31, 42, 68, 0.05);
+    }
+
+    .chain-node::after {
+      content: "";
+      position: absolute;
+      top: 34px;
+      right: -10px;
+      width: 10px;
+      height: 2px;
+      background: rgba(49, 87, 213, 0.34);
+    }
+
+    .chain-node:last-child::after {
+      display: none;
+    }
+
+    .chain-node.active {
+      border-color: color-mix(in srgb, var(--accent) 42%, #dce3ef);
+      box-shadow: 0 18px 34px rgba(31, 42, 68, 0.11);
+      transform: translateY(-2px);
+    }
+
+    .chain-number {
+      width: 36px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--accent, var(--blue));
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .chain-node h3 {
+      font-size: 15px;
+      line-height: 1.28;
+    }
+
+    .chain-node p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .chain-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .run-message {
+      display: none;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: var(--blue-soft);
+      border: 1px solid rgba(49, 87, 213, 0.18);
+      color: #1e409b;
+      font-weight: 850;
+    }
+
+    .run-message.visible {
+      display: block;
+    }
+
+    .task-panel, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .task-panel {
+      padding: 22px;
+    }
+
+    .panel {
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(22px, 3vw, 30px);
+      line-height: 1.2;
+    }
+
+    .section-head p {
+      max-width: 660px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 6px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #344054;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      color: var(--ink);
+      background: #fbfcff;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(49, 87, 213, 0.55);
+      box-shadow: 0 0 0 4px rgba(49, 87, 213, 0.1);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .btn {
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-weight: 800;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .btn.primary {
+      color: #fff;
+      background: linear-gradient(135deg, #3157d5, #5f55d8);
+      border-color: transparent;
+      box-shadow: 0 10px 18px rgba(49, 87, 213, 0.16);
+    }
+
+    .btn.subtle {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(49, 87, 213, 0.18);
+    }
+
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .agent-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 242px;
+      padding: 20px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 26px rgba(31, 42, 68, 0.06);
+      overflow: hidden;
+      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+
+    .agent-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(49, 87, 213, 0.38);
+      box-shadow: 0 18px 34px rgba(31, 42, 68, 0.1);
+    }
+
+    .agent-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 6px;
+      background: var(--accent, var(--blue));
+    }
+
+    .agent-number {
+      width: 38px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      border-radius: 8px;
+      background: var(--accent, var(--blue));
+      font-weight: 900;
+    }
+
+    .agent-card h3 {
+      margin-top: 16px;
+      font-size: 21px;
+      line-height: 1.24;
+    }
+
+    .agent-card.active {
+      border-color: color-mix(in srgb, var(--accent) 50%, #dce3ef);
+      box-shadow: 0 18px 38px rgba(31, 42, 68, 0.14);
+      transform: translateY(-4px);
+    }
+
+    .agent-role {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .agent-card p {
+      margin-top: 12px;
+      color: #465469;
+      line-height: 1.58;
+      flex: 1;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .progress-track {
+      width: 112px;
+      height: 8px;
+      background: #ecf0f7;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: var(--progress, 64%);
+      height: 100%;
+      background: var(--accent, var(--blue));
+      border-radius: 999px;
+    }
+
+    .agent-card .btn {
+      width: 100%;
+      margin-top: 14px;
+    }
+
+    .handoff-meta {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .handoff-meta b {
+      color: #344054;
+    }
+
+    .workspace-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.38fr);
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .workspace-title {
+      padding: 24px;
+      min-width: 0;
+      color: #fff;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent) 86%, #101828), color-mix(in srgb, var(--accent) 56%, #7b4ce3)),
+        var(--accent);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .workspace-title h1 {
+      margin: 14px 0 0;
+      font-size: clamp(31px, 4vw, 48px);
+    }
+
+    .workspace-title p {
+      max-width: 800px;
+      margin-top: 12px;
+      color: rgba(255,255,255,0.82);
+      line-height: 1.65;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .breadcrumb button {
+      color: var(--blue);
+      background: transparent;
+      padding: 0;
+      font-weight: 850;
+    }
+
+    .phase-meta {
+      display: grid;
+      gap: 10px;
+      padding: 20px;
+      min-width: 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .meta-row {
+      display: grid;
+      gap: 4px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #edf1f7;
+    }
+
+    .meta-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .meta-row span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .meta-row b {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(330px, 0.46fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .content-stack {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+      position: sticky;
+      top: 86px;
+    }
+
+    .panel h2 {
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .panel .explain {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.58;
+    }
+
+    .subgrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .mini-card {
+      padding: 15px;
+      border: 1px solid var(--line);
+      background: #fbfcff;
+      border-radius: 8px;
+    }
+
+    .mini-card b {
+      display: block;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .mini-card span, .mini-card p {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      line-height: 1.52;
+      font-size: 13px;
+    }
+
+    .risk-card {
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(180, 107, 8, 0.22);
+      background: var(--amber-soft);
+      color: #6f4308;
+    }
+
+    .risk-card.rose {
+      border-color: rgba(196, 61, 94, 0.22);
+      background: var(--rose-soft);
+      color: #8a243e;
+    }
+
+    .risk-card.green {
+      border-color: rgba(22, 132, 91, 0.22);
+      background: var(--green-soft);
+      color: #0f5d41;
+    }
+
+    .risk-card b {
+      display: block;
+      margin-bottom: 7px;
+    }
+
+    .risk-card p {
+      color: inherit;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .action-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .action-panel .button-row {
+      margin-top: 0;
+    }
+
+    .text-button {
+      color: var(--blue);
+      background: transparent;
+      border: 0;
+      min-height: 34px;
+      padding: 0 4px;
+      font-weight: 820;
+    }
+
+    .details-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(31, 42, 68, 0.04);
+      overflow: hidden;
+    }
+
+    .details-panel summary {
+      padding: 16px 18px;
+      color: #3157d5;
+      cursor: pointer;
+      font-weight: 850;
+      list-style: none;
+    }
+
+    .details-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .details-panel-content {
+      display: grid;
+      gap: 16px;
+      padding: 0 18px 18px;
+    }
+
+    .feedback-panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    .feedback-panel select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: #fbfcff;
+    }
+
+    .feedback-status {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .exception-card {
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(196, 61, 94, 0.2);
+      background: #fff8fa;
+    }
+
+    .exception-card b {
+      display: block;
+      color: #8a243e;
+      margin-bottom: 8px;
+    }
+
+    .exception-card dl {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      color: #4b5568;
+      font-size: 13px;
+      line-height: 1.48;
+    }
+
+    .exception-card dt {
+      font-weight: 850;
+      color: #344054;
+    }
+
+    .exception-card dd {
+      margin: 2px 0 0;
+    }
+
+    .material-list,
+    .handoff-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .material-item,
+    .handoff-item {
+      padding: 13px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fbfcff;
+      color: #344054;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .handoff-item {
+      border-color: rgba(49, 87, 213, 0.16);
+      background: var(--blue-soft);
+    }
+
+    .process-line {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .process-step {
+      position: relative;
+      min-height: 112px;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .process-step::after {
+      content: "";
+      position: absolute;
+      top: 28px;
+      right: -10px;
+      width: 10px;
+      height: 2px;
+      background: color-mix(in srgb, var(--accent) 36%, #dce3ef);
+    }
+
+    .process-step:last-child::after {
+      display: none;
+    }
+
+    .process-step b {
+      display: block;
+      color: var(--accent, var(--blue));
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .process-step span {
+      color: #465469;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .confirm-box {
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(49, 87, 213, 0.18);
+      background: var(--blue-soft);
+    }
+
+    .confirm-box p {
+      color: #1e409b;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .flow-node {
+      position: relative;
+      padding: 15px;
+      min-height: 110px;
+      border: 1px solid rgba(49, 87, 213, 0.18);
+      background: #fbfcff;
+      border-radius: 8px;
+    }
+
+    .flow-node::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      width: 10px;
+      height: 2px;
+      background: rgba(49, 87, 213, 0.35);
+    }
+
+    .flow-node:last-child::after {
+      display: none;
+    }
+
+    .flow-node b {
+      display: block;
+      color: var(--blue);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .flow-node span {
+      display: block;
+      color: #344054;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .dimension-list {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .dimension-card {
+      padding: 14px;
+      min-height: 112px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #f8fbff);
+    }
+
+    .dimension-card b {
+      display: block;
+      font-size: 15px;
+    }
+
+    .dimension-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .funnel {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+      place-items: center;
+    }
+
+    .funnel-step {
+      width: var(--w);
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      color: #fff;
+      border-radius: 8px;
+      background: var(--c);
+    }
+
+    .funnel-step span {
+      font-weight: 800;
+    }
+
+    .funnel-step small {
+      color: rgba(255,255,255,0.78);
+    }
+
+    .bar-chart {
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 126px minmax(0, 1fr) 44px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar-row span {
+      color: #344054;
+      font-size: 14px;
+    }
+
+    .bar-bg {
+      height: 16px;
+      background: #edf1f7;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar {
+      width: var(--value);
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent, var(--blue));
+    }
+
+    .donut-wrap {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .donut {
+      width: 152px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: conic-gradient(var(--blue) 0 31%, var(--purple) 31% 52%, var(--cyan) 52% 68%, var(--green) 68% 84%, var(--amber) 84% 94%, var(--rose) 94% 100%);
+      position: relative;
+    }
+
+    .donut::after {
+      content: "来源";
+      position: absolute;
+      inset: 32px;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      border-radius: 50%;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .legend {
+      display: grid;
+      gap: 9px;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 14px 1fr auto;
+      align-items: center;
+      gap: 9px;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: var(--c);
+    }
+
+    .trust-stack {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .trust-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr) 52px;
+      gap: 10px;
+      align-items: center;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .trust-track {
+      height: 18px;
+      overflow: hidden;
+      background: #edf1f7;
+      border-radius: 999px;
+    }
+
+    .trust-fill {
+      width: var(--value);
+      height: 100%;
+      border-radius: 999px;
+      background: var(--c);
+    }
+
+    .schema-map {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .schema-link {
+      min-height: 138px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #fff, #f8fbff);
+    }
+
+    .schema-link b {
+      display: block;
+      color: var(--blue);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .schema-link span {
+      display: block;
+      margin-top: 10px;
+      color: #465469;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .source-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .source-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 15px;
+      background: #fff;
+    }
+
+    .source-card h3 {
+      font-size: 17px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 8px;
+      color: #344054;
+      background: #f2f5fa;
+      border: 1px solid #e2e8f2;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .tag.good {
+      color: #0f5d41;
+      background: var(--green-soft);
+      border-color: rgba(22, 132, 91, 0.2);
+    }
+
+    .tag.warn {
+      color: #7a4b07;
+      background: var(--amber-soft);
+      border-color: rgba(180, 107, 8, 0.18);
+    }
+
+    .gap-strip {
+      margin-top: 12px;
+      padding: 10px 12px;
+      color: #7a4b07;
+      background: var(--amber-soft);
+      border: 1px solid rgba(180, 107, 8, 0.16);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .matrix {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 16px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .matrix th, .matrix td {
+      padding: 12px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .matrix th {
+      color: #344054;
+      background: #f4f7fb;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .matrix tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .matrix th:last-child, .matrix td:last-child {
+      border-right: 0;
+    }
+
+    .cell-ok, .cell-mid, .cell-miss {
+      text-align: center;
+      font-weight: 900;
+      border-radius: 6px;
+    }
+
+    .cell-ok {
+      color: #0f5d41;
+      background: var(--green-soft);
+    }
+
+    .cell-mid {
+      color: #7a4b07;
+      background: var(--amber-soft);
+    }
+
+    .cell-miss {
+      color: #8a243e;
+      background: var(--rose-soft);
+    }
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: 126px repeat(5, minmax(70px, 1fr));
+      gap: 6px;
+      margin-top: 16px;
+      align-items: stretch;
+    }
+
+    .heat-label, .heat-cell {
+      min-height: 38px;
+      display: grid;
+      place-items: center;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .heat-label {
+      color: #344054;
+      background: #f4f7fb;
+      font-weight: 850;
+    }
+
+    .heat-cell {
+      color: #253047;
+      background: color-mix(in srgb, var(--rose) var(--level), #ffffff);
+      border: 1px solid rgba(196, 61, 94, 0.08);
+    }
+
+    .quadrant {
+      position: relative;
+      height: 330px;
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, transparent calc(50% - 1px), #dce3ef calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+        linear-gradient(180deg, transparent calc(50% - 1px), #dce3ef calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+        #fbfcff;
+      overflow: hidden;
+    }
+
+    .axis-label {
+      position: absolute;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .axis-top { top: 10px; left: 50%; transform: translateX(-50%); }
+    .axis-bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+    .axis-left { left: 10px; top: 50%; transform: translateY(-50%); }
+    .axis-right { right: 10px; top: 50%; transform: translateY(-50%); }
+
+    .point {
+      position: absolute;
+      left: var(--x);
+      bottom: var(--y);
+      max-width: 148px;
+      padding: 8px 10px;
+      color: #fff;
+      background: var(--accent);
+      border-radius: 8px;
+      box-shadow: 0 10px 20px rgba(31, 42, 68, 0.12);
+      font-size: 12px;
+      font-weight: 800;
+      transform: translate(-50%, 50%);
+    }
+
+    .group-map {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .group-box {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+    }
+
+    .group-box h3 {
+      font-size: 17px;
+    }
+
+    .group-box ul, .report-preview ul {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: #465469;
+      line-height: 1.68;
+    }
+
+    .tree {
+      margin-top: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tree-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .tree-node {
+      padding: 11px 12px;
+      border-radius: 8px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 850;
+      border: 1px solid rgba(49, 87, 213, 0.14);
+    }
+
+    .tree-leaves {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .leaf {
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .evidence-chain {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .evidence-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .evidence-piece {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fbfcff;
+      font-size: 13px;
+      line-height: 1.48;
+    }
+
+    .report-preview {
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #fbfcff;
+      border-radius: 8px;
+      line-height: 1.7;
+    }
+
+    .report-preview h3 {
+      margin-top: 16px;
+      font-size: 18px;
+    }
+
+    .report-preview h3:first-child {
+      margin-top: 0;
+    }
+
+    .qc-score {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .score-box {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .score-box b {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .score-box span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .risk-meter {
+      margin-top: 16px;
+    }
+
+    .meter-track {
+      height: 18px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--green) 0 45%, var(--amber) 45% 75%, var(--rose) 75% 100%);
+      position: relative;
+    }
+
+    .meter-pin {
+      position: absolute;
+      left: var(--pos);
+      top: -6px;
+      width: 5px;
+      height: 30px;
+      background: #172033;
+      border-radius: 999px;
+      transform: translateX(-50%);
+    }
+
+    .rollback {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .rollback-step {
+      min-height: 94px;
+      padding: 13px;
+      border-radius: 8px;
+      background: #fbfcff;
+      border: 1px solid var(--line);
+    }
+
+    .rollback-step.active {
+      border-color: rgba(196, 61, 94, 0.24);
+      background: var(--rose-soft);
+    }
+
+    .rollback-step b {
+      display: block;
+      font-size: 14px;
+    }
+
+    .rollback-step span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .final-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .trace-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .trace-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent, var(--blue));
+      border-radius: 8px;
+      background: #fbfcff;
+    }
+
+    .trace-card h3 {
+      font-size: 17px;
+      line-height: 1.35;
+    }
+
+    .trace-card p {
+      margin-top: 8px;
+      color: #465469;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .trace-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .final-report {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(22px, 4vw, 42px);
+      min-width: 0;
+    }
+
+    .hero > *,
+    .workspace-header > *,
+    .workspace-grid > *,
+    .final-layout > * {
+      min-width: 0;
+    }
+
+    .final-report h1 {
+      margin-top: 0;
+      color: var(--ink);
+      font-size: clamp(30px, 4vw, 46px);
+    }
+
+    .final-report h2 {
+      margin-top: 28px;
+      font-size: 22px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+    }
+
+    .final-report p {
+      margin-top: 10px;
+      color: #465469;
+      line-height: 1.72;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .empty-space {
+      height: 14px;
+    }
+
+    @media (max-width: 1060px) {
+      .hero,
+      .workspace-header,
+      .workspace-grid,
+      .final-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace-status {
+        grid-template-columns: 1fr;
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+      }
+
+      .side-stack {
+        position: static;
+      }
+
+      .agent-grid,
+      .source-cards,
+      .agent-chain {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dimension-list,
+      .schema-map {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .collab-strip {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .top-actions {
+        justify-content: flex-start;
+      }
+
+      .form-grid,
+      .agent-grid,
+      .subgrid,
+      .flow,
+      .dimension-list,
+      .source-cards,
+      .group-map,
+      .qc-score,
+      .rollback,
+      .agent-chain,
+      .material-list,
+      .handoff-list,
+      .process-line,
+      .schema-map,
+      .evidence-row {
+        grid-template-columns: 1fr;
+      }
+
+      .collab-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .donut-wrap,
+      .tree-row,
+      .evidence-row {
+        grid-template-columns: 1fr;
+      }
+
+      .heatmap {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .matrix {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div>
+          <strong>竞品分析 Agent 协作系统</strong>
+          <span>数字调研小组空间</span>
+        </div>
+      </div>
+      <div class="workspace-status" aria-live="polite">
+        <span>当前任务：<b id="topTaskName">AI 会议协作工具赛道</b></span>
+        <span>当前阶段：<b id="topStageName">协作流程</b></span>
+        <span id="runStatusText">运行状态：等待启动 Demo</span>
+        <span id="topQualityText">质检状态：未进入质检</span>
+        <div class="run-indicator"><div class="run-indicator-fill" id="topRunFill"></div></div>
+      </div>
+      <div class="top-actions" aria-label="工作空间操作">
+        <button class="nav-pill active" data-page="home">返回协作流程</button>
+        <button class="nav-pill" id="runDemoTop" type="button">一键运行 Demo</button>
+        <button class="nav-pill" data-page="final">查看最终报告</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="page active" id="home">
+        <div class="hero">
+          <div class="hero-copy">
+            <span class="eyebrow">多 Agent 协作项目空间</span>
+            <h1>AI 驱动的竞品分析 Agent 协作系统</h1>
+            <p>输入赛道和竞品，点击运行，系统会按 6 个 Agent 阶段完成采集、整理、分析、撰写和质检。你可以随时查看结果，也可以补充资料或调整方向。</p>
+            <div class="run-message" id="runMessage">正在执行：任务规划 Agent</div>
+          </div>
+
+          <div class="task-panel">
+            <div class="section-head">
+              <div>
+                <h2>启动本次竞品分析任务</h2>
+                <p>填写任务信息后，点击运行即可启动后端多 Agent 工作流；没有 API Key 时会自动使用 Demo mode 跑通流程。</p>
+              </div>
+            </div>
+            <form id="taskForm" class="form-grid">
+              <div class="field">
+                <label for="track">你要分析的产品赛道</label>
+                <input id="track" value="AI 会议协作工具赛道">
+              </div>
+              <div class="field">
+                <label for="purpose">报告用途</label>
+                <input id="purpose" value="用于产品功能规划">
+              </div>
+              <div class="field full">
+                <label for="rivals">候选竞品</label>
+                <textarea id="rivals">飞书妙记、腾讯文档智能助手、钉钉智能会议、Notion AI</textarea>
+              </div>
+              <div class="field">
+                <label for="focus">重点分析维度</label>
+                <textarea id="focus">会议记录、智能摘要、协作编辑、任务沉淀、价格策略、AI 能力、用户反馈、商业模式</textarea>
+              </div>
+              <div class="field">
+                <label for="sources">信息来源范围</label>
+                <textarea id="sources">官网、产品页、价格页、帮助文档、更新日志、媒体报道、应用商店评论、社交平台公开讨论</textarea>
+              </div>
+            </form>
+            <div class="button-row">
+              <button class="btn primary" id="runDemoMain" type="button">运行多 Agent 协作 Demo</button>
+              <button class="btn" data-page="planning">只查看 Agent 工作间</button>
+              <button class="btn subtle" id="resetDemo" type="button">恢复课堂 demo</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Agent 协作流程</h2>
+              <p>从任务规划到最终报告，每一步都有明确产出。点击节点可查看该阶段结果，未完成阶段会提示等待上游材料。</p>
+            </div>
+          </div>
+          <div class="agent-chain" id="agentChain"></div>
+          <div class="run-message visible" id="recentRunMessage" style="display:none"></div>
+          <div class="button-row" id="recentRunActions" style="display:none">
+            <button class="btn primary" data-page="final">查看最近一次最终报告</button>
+            <button class="btn" data-page="quality">查看质检结果</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="page" id="planning"></section>
+      <section class="page" id="collecting"></section>
+      <section class="page" id="structuring"></section>
+      <section class="page" id="comparing"></section>
+      <section class="page" id="writing"></section>
+      <section class="page" id="quality"></section>
+      <section class="page" id="final"></section>
+    </main>
+  </div>
+
+  <script>
+    const agents = [
+      {
+        id: "planning",
+        number: "01",
+        name: "任务规划 Agent",
+        role: "项目经理",
+        defaultStatus: "待开始",
+        task: "理解用户需求，明确分析目标与竞品范围",
+        goal: "把模糊需求拆成可执行调研计划，并明确哪些信息需要用户确认。",
+        output: "任务规划结果、分析维度、澄清问题",
+        brief: "将用户输入拆解为可执行的调研计划，并判断是否需要补充信息。",
+        selfIntro: "我是任务规划 Agent，负责把模糊的竞品分析需求拆成可执行的调研计划。本轮我会确认分析目标、竞品范围和分析维度，并把任务包交给信息采集 Agent。",
+        upstream: "用户输入",
+        downstream: "信息采集 Agent",
+        upstreamMaterials: ["产品赛道", "报告用途", "候选竞品", "重点分析维度", "信息来源范围"],
+        process: ["接收用户输入并识别任务目标", "收窄竞品范围与分析边界", "拆解分析维度和搜索关键词", "交接可执行任务包"],
+        handoff: ["竞品名单", "搜索关键词", "分析维度", "信息来源范围", "需要优先确认的问题"],
+        exception: ["用户输入不清楚", "任务规划 Agent", "追问赛道、报告用途、候选竞品和分析维度"],
+        accent: "#3157d5",
+        defaultProgress: 0
+      },
+      {
+        id: "collecting",
+        number: "02",
+        name: "信息采集 Agent",
+        role: "资料研究员",
+        defaultStatus: "等待上游材料",
+        task: "收集公开资料并标记来源可信度",
+        goal: "为每个竞品建立公开资料包，区分强证据、弱信号和信息缺口。",
+        output: "公开资料包、来源清单、信息缺口",
+        brief: "围绕每个竞品建立公开资料包，标记来源类型、可信度和信息缺口。",
+        selfIntro: "我是信息采集 Agent，负责围绕竞品名单和信息来源范围收集公开资料。我会把来源按可信度分层，并把缺口显性标记给结构化处理 Agent。",
+        upstream: "任务规划 Agent",
+        downstream: "结构化处理 Agent",
+        upstreamMaterials: ["竞品名单", "搜索关键词", "分析维度", "信息来源范围", "需要优先确认的问题"],
+        process: ["接收竞品名单和搜索范围", "按来源类型采集公开资料", "标记来源可信度与资料摘录", "交接公开资料包和信息缺口"],
+        handoff: ["公开资料包", "来源清单", "资料摘录", "信息缺口", "来源可信度标记"],
+        exception: ["公开信息不足", "信息采集 Agent", "扩展搜索渠道；仍不足则标记为字段缺失或待确认"],
+        accent: "#0f91b8",
+        defaultProgress: 0
+      },
+      {
+        id: "structuring",
+        number: "03",
+        name: "结构化处理 Agent",
+        role: "知识整理员",
+        defaultStatus: "等待上游材料",
+        task: "把散乱资料整理为统一竞品知识表",
+        goal: "把资料映射到统一竞品知识 Schema，确保后续比较使用同一口径。",
+        output: "结构化竞品知识表、字段完成情况、冲突信息",
+        brief: "将资料映射到统一字段，识别缺失内容和来源之间的冲突。",
+        selfIntro: "我是结构化处理 Agent，负责把散乱资料转成统一竞品知识 Schema。本轮我会抽取字段、标记缺失和冲突，并把可比较的知识表交给对比分析 Agent。",
+        upstream: "信息采集 Agent",
+        downstream: "对比分析 Agent",
+        upstreamMaterials: ["公开资料包", "来源清单", "资料摘录", "信息缺口", "来源可信度标记"],
+        process: ["接收公开资料包", "映射到统一 Schema 字段", "识别缺失字段和来源冲突", "交接结构化竞品知识表"],
+        handoff: ["结构化竞品知识表", "字段完成情况", "缺失字段", "冲突信息", "待确认内容"],
+        exception: ["来源信息冲突", "结构化处理 Agent", "优先官方来源，并在报告中说明不确定性"],
+        accent: "#16845b",
+        defaultProgress: 0
+      },
+      {
+        id: "comparing",
+        number: "04",
+        name: "对比分析 Agent",
+        role: "策略分析师",
+        defaultStatus: "等待上游材料",
+        task: "基于结构化表格产生产品洞察",
+        goal: "基于统一表格识别行业共性、关键差异和可验证的产品机会点。",
+        output: "多维度对比矩阵、关键差异、初步机会点",
+        brief: "从功能、价格、AI 能力、反馈和商业模式中提炼共性、差异与机会点。",
+        selfIntro: "我是对比分析 Agent，负责把结构化知识表转成产品洞察。我会区分行业共性和差异化空间，筛出机会点并标记分析风险。",
+        upstream: "结构化处理 Agent",
+        downstream: "报告撰写 Agent",
+        upstreamMaterials: ["结构化竞品知识表", "字段完成情况", "缺失字段", "冲突信息", "待确认内容"],
+        process: ["接收结构化知识表", "横向比较功能、价格和 AI 能力", "提炼共性、差异和机会点", "交接分析材料包"],
+        handoff: ["多维度对比矩阵", "行业共性", "关键差异", "初步机会点", "分析风险"],
+        exception: ["竞品范围过大", "对比分析 Agent", "建议收窄到 3-5 个代表性竞品，或按细分赛道分组"],
+        accent: "#7b4ce3",
+        defaultProgress: 0
+      },
+      {
+        id: "writing",
+        number: "05",
+        name: "报告撰写 Agent",
+        role: "商业研究写作者",
+        defaultStatus: "等待上游材料",
+        task: "将分析结果组织为报告初稿",
+        goal: "把分析结果转成可读报告，并保留机会点背后的证据链。",
+        output: "报告初稿、报告结构、执行摘要、核心发现",
+        brief: "把分析结果整理为可读报告，并保留每个机会点的证据链。",
+        selfIntro: "我是报告撰写 Agent，负责把对比分析结果组织成报告初稿。我会把资料依据、结构化字段、分析判断和报告结论串成可追溯证据链。",
+        upstream: "对比分析 Agent",
+        downstream: "质检审查 Agent",
+        upstreamMaterials: ["多维度对比矩阵", "行业共性", "关键差异", "初步机会点", "分析风险"],
+        process: ["接收对比分析材料", "搭建报告结构与执行摘要", "写入核心发现和机会点", "交接报告初稿和证据链"],
+        handoff: ["报告初稿", "核心发现", "机会点证据链", "风险与信息缺口", "来源清单"],
+        exception: ["结论缺少依据", "报告撰写 Agent", "将强判断降级为弱表述，等待质检审查确认"],
+        accent: "#b46b08",
+        defaultProgress: 0
+      },
+      {
+        id: "quality",
+        number: "06",
+        name: "质检审查 Agent",
+        role: "研究质量审查员",
+        defaultStatus: "等待上游材料",
+        task: "检查来源、字段、结论和报告一致性",
+        goal: "驳回缺少依据的强判断，触发局部回退，并确认最终报告风险边界。",
+        output: "质检结果、发现的问题、修改建议、最终报告",
+        brief: "审查结论支撑关系，指出需要回退补充的环节，并给出最终通过状态。",
+        selfIntro: "我是质检审查 Agent，负责检查来源、字段、结论和报告之间是否一致。遇到缺少依据的强判断，我会要求回退补充或改成更稳妥的弱表述。",
+        upstream: "报告撰写 Agent",
+        downstream: "最终报告页",
+        upstreamMaterials: ["报告初稿", "结构化竞品知识表", "来源清单", "核心发现", "机会点证据链"],
+        process: ["接收报告初稿和证据链", "检查来源完整性和字段一致性", "驳回缺少依据的强判断", "交接有条件通过的最终报告"],
+        handoff: ["质检结果", "发现的问题", "修改建议", "有条件通过说明", "最终报告"],
+        exception: ["结论缺少依据", "质检审查 Agent", "驳回强判断，要求补充来源，或改为弱表述"],
+        accent: "#c43d5e",
+        defaultProgress: 0
+      }
+    ];
+
+    const pageOrder = ["home", "planning", "collecting", "structuring", "comparing", "writing", "quality", "final"];
+    const stageNames = {
+      home: "协作流程",
+      planning: "任务规划 Agent 工作间",
+      collecting: "信息采集 Agent 工作间",
+      structuring: "结构化处理 Agent 工作间",
+      comparing: "对比分析 Agent 工作间",
+      writing: "报告撰写 Agent 工作间",
+      quality: "质检审查 Agent 工作间",
+      final: "最终报告"
+    };
+
+    const runtime = {
+      running: false,
+      currentAgentId: null,
+      message: "运行状态：等待启动 Demo",
+      quality: "质检状态：未进入质检",
+      progress: 0,
+      timers: [],
+      agents: Object.fromEntries(agents.map((agent) => [agent.id, {
+        status: agent.defaultStatus,
+        progress: agent.defaultProgress,
+        active: false,
+        risk: agent.id === "quality" ? "待质检" : "无",
+        enterable: agent.id === "planning"
+      }]))
+    };
+
+    const defaultTask = {
+      track: "AI 会议协作工具赛道",
+      purpose: "用于产品功能规划",
+      rivals: "飞书妙记、腾讯文档智能助手、钉钉智能会议、Notion AI",
+      focus: "会议记录、智能摘要、协作编辑、任务沉淀、价格策略、AI 能力、用户反馈、商业模式",
+      sources: "官网、产品页、价格页、帮助文档、更新日志、媒体报道、应用商店评论、社交平台公开讨论"
+    };
+
+    const taskState = { ...defaultTask };
+    const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+    const remoteState = {
+      runId: "",
+      pollingTimer: null,
+      artifacts: {},
+      result: null,
+      apiAvailable: true,
+      latestError: ""
+    };
+
+    const sourceCoverage = [
+      ["飞书妙记", 88, "#3157d5"],
+      ["腾讯文档智能助手", 76, "#0f91b8"],
+      ["钉钉智能会议", 82, "#16845b"],
+      ["Notion AI", 92, "#7b4ce3"]
+    ];
+
+    const products = ["飞书妙记", "腾讯文档智能助手", "钉钉智能会议", "Notion AI"];
+    const fields = ["会议记录", "智能摘要", "协作沉淀", "价格信息", "用户反馈"];
+
+    function getTaskValues() {
+      ["track", "purpose", "rivals", "focus", "sources"].forEach((key) => {
+        const el = document.getElementById(key);
+        if (el) taskState[key] = el.value.trim() || taskState[key];
+      });
+      return taskState;
+    }
+
+    function statusClass(status) {
+      if (status === "执行中") return "running";
+      if (status === "已完成") return "done";
+      if (status === "等待上游材料" || status === "待开始") return "waiting";
+      if (status === "有条件通过" || status === "需局部复核") return "review";
+      if (status === "需回退") return "rework";
+      return "waiting";
+    }
+
+    function statusLabel(status) {
+      const labels = {
+        waiting: "等待上游材料",
+        running: "执行中",
+        completed: "已完成",
+        failed: "失败",
+        rollback_needed: "需回退"
+      };
+      return labels[status] || status || "等待上游材料";
+    }
+
+    function agentRuntime(agentId) {
+      return runtime.agents[agentId];
+    }
+
+    function updateTopStatus(page = "home") {
+      const task = getTaskValues();
+      const topTask = document.getElementById("topTaskName");
+      const topStage = document.getElementById("topStageName");
+      const runText = document.getElementById("runStatusText");
+      const qualityText = document.getElementById("topQualityText");
+      const fill = document.getElementById("topRunFill");
+      const runMessage = document.getElementById("runMessage");
+      if (topTask) topTask.textContent = task.track || "AI 会议协作工具赛道";
+      if (topStage) topStage.textContent = stageNames[page] || "协作流程";
+      if (runText) runText.textContent = runtime.message;
+      if (qualityText) qualityText.textContent = runtime.quality;
+      if (fill) fill.style.setProperty("--run-progress", `${runtime.progress}%`);
+      if (runMessage) {
+        runMessage.textContent = runtime.message.replace("运行状态：", "");
+        runMessage.classList.toggle("visible", runtime.running || runtime.progress > 0);
+      }
+      const recentMessage = document.getElementById("recentRunMessage");
+      const recentActions = document.getElementById("recentRunActions");
+      if (recentMessage && recentActions) {
+        const hasRun = Boolean(remoteState.runId) || runtime.progress >= 100;
+        recentMessage.style.display = hasRun ? "block" : "none";
+        recentActions.style.display = hasRun ? "flex" : "none";
+        recentMessage.textContent = remoteState.runId
+          ? `最近一次运行：${remoteState.runId}。${runtime.message.replace("运行状态：", "")}`
+          : runtime.message.replace("运行状态：", "");
+      }
+    }
+
+    function renderAgentCards() {
+      const host = document.getElementById("agentCards");
+      if (!host) return;
+      host.innerHTML = agents.map((agent) => `
+        <article class="agent-card ${agentRuntime(agent.id).active ? "active" : ""}" style="--accent:${agent.accent}; --progress:${agentRuntime(agent.id).progress}%">
+          <div class="agent-number">${agent.number}</div>
+          <h3>${agent.name}</h3>
+          <div class="agent-role">角色身份：${agent.role}</div>
+          <p>${agent.brief}</p>
+          <div class="status-line">
+            <span class="status-tag ${statusClass(agentRuntime(agent.id).status)}">${agentRuntime(agent.id).status}</span>
+            <div class="progress-track"><div class="progress-fill"></div></div>
+          </div>
+          <div class="handoff-meta">
+            <span><b>上游输入：</b>${agent.upstream}</span>
+            <span><b>下游交接：</b>${agent.downstream}</span>
+            <span><b>风险状态：</b>${agentRuntime(agent.id).risk}</span>
+          </div>
+          <button class="btn subtle" data-page="${agent.id}">进入工作间</button>
+        </article>
+      `).join("");
+    }
+
+    function renderAgentChain() {
+      const host = document.getElementById("agentChain");
+      if (!host) return;
+      const nodes = agents.map((agent) => {
+        const state = agentRuntime(agent.id);
+        return `
+          <article class="chain-node ${state.active ? "active" : ""}" style="--accent:${agent.accent}; --progress:${state.progress}%">
+            <div class="chain-number">${agent.number}</div>
+            <h3>${agent.name}</h3>
+            <p>产出：${agent.output}</p>
+            <span class="status-tag ${statusClass(state.status)}">${state.status}</span>
+            <div class="progress-track"><div class="progress-fill"></div></div>
+            <div class="chain-meta">
+              <span class="tag ${state.enterable ? "good" : "warn"}">${state.enterable ? "可进入" : "等待材料"}</span>
+              <span class="tag ${state.risk === "无" ? "good" : "warn"}">${state.risk}</span>
+            </div>
+            <button class="btn subtle" data-page="${agent.id}">进入工作间</button>
+          </article>
+        `;
+      }).join("");
+      host.innerHTML = `${nodes}
+        <article class="chain-node" style="--accent:#172033; --progress:${runtime.progress}%">
+          <div class="chain-number">07</div>
+          <h3>最终报告</h3>
+          <p>产出：可复制、可导出的竞品分析报告</p>
+          <span class="status-tag ${runtime.progress >= 100 ? "done" : "waiting"}">${runtime.progress >= 100 ? "可查看" : "等待质检"}</span>
+          <div class="progress-track"><div class="progress-fill"></div></div>
+          <div class="chain-meta"><span class="tag good">可进入</span><span class="tag warn">保留风险边界</span></div>
+          <button class="btn subtle" data-page="final">查看最终报告</button>
+        </article>`;
+    }
+
+    function renderCommonSections(agent) {
+      return `
+        <section class="panel">
+          <h2>上游材料</h2>
+          <p class="explain">${agent.name} 接收来自「${agent.upstream}」的材料，用于启动本阶段工作。</p>
+          <div class="material-list">
+            ${agent.upstreamMaterials.map((item) => `<div class="material-item">${item}</div>`).join("")}
+          </div>
+        </section>
+        <section class="panel">
+          <h2>本 Agent 工作过程</h2>
+          <p class="explain">本阶段不是一次性输出，而是按接收、处理、生成、交接的方式推进。</p>
+          <div class="process-line">
+            ${agent.process.map((item, index) => `<div class="process-step"><b>${String(index + 1).padStart(2, "0")}</b><span>${item}</span></div>`).join("")}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderRemotePanel(agentId) {
+      const artifact = remoteState.artifacts[agentId];
+      if (!artifact) return "";
+      const titleMap = {
+        planning: "任务规划结果",
+        collecting: "公开资料包",
+        structuring: "结构化竞品知识表",
+        comparing: "多维度对比矩阵",
+        writing: "报告初稿",
+        quality: "质检结果"
+      };
+      const content = artifact.content_type === "markdown"
+        ? `<div class="report-preview">${markdownToHtml(artifact.data || "")}</div>`
+        : renderArtifactSummary(agentId, artifact.data || {});
+      return `
+        <section class="panel">
+          <h2>本阶段核心结果</h2>
+          <p class="explain"><b>${titleMap[agentId] || "本阶段产出"}</b></p>
+          <p class="explain">${artifact.demo_mode ? "Demo mode：当前结果来自本地示例数据，不是实时搜索。" : "当前内容来自本次后端运行产物。"}</p>
+          ${content}
+        </section>
+      `;
+    }
+
+    function renderWaitingPanel(agent) {
+      return `
+        <section class="panel">
+          <h2>本阶段核心结果</h2>
+          <p class="explain">当前还没有读取到「${agent.name}」的后端产物。请先启动分析任务，或等待上游 Agent 完成交接。</p>
+          <div class="risk-card">
+            <b>当前展示说明</b>
+            <p>下方静态内容仅作为“示例展示 / Fallback Demo”，不是本次后端运行结果。</p>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderFallbackDetails(content) {
+      return `
+        <details class="panel" style="padding:0; overflow:hidden">
+          <summary style="padding:18px 22px; cursor:pointer; font-weight:850; color:#3157d5">示例展示 / Fallback Demo</summary>
+          <div class="content-stack" style="padding:0 22px 22px">${content}</div>
+        </details>
+      `;
+    }
+
+    function renderArtifactSummary(agentId, data) {
+      if (agentId === "planning") {
+        return `<div class="subgrid">
+          <div class="mini-card"><b>分析目标</b><span>${data.analysis_goal || "待生成"}</span></div>
+          <div class="mini-card"><b>推荐竞品范围</b><span>${(data.competitor_scope || []).join("、")}</span></div>
+          <div class="mini-card"><b>本次分析维度</b><span>${(data.dimension_list || []).join("、")}</span></div>
+          <div class="mini-card"><b>需要补充的信息</b><span>${(data.clarification_questions || []).join("；") || "暂无"}</span></div>
+        </div>`;
+      }
+      if (agentId === "collecting") {
+        return `<div class="source-cards">${(data.competitors || []).map((item) => `
+          <article class="source-card">
+            <h3>${item.name}</h3>
+            <div class="bar-chart"><div class="bar-row" style="--accent:#3157d5"><span>来源覆盖</span><div class="bar-bg"><div class="bar" style="--value:${item.source_coverage_score || 0}%"></div></div><b>${item.source_coverage_score || 0}%</b></div></div>
+            <div class="tag-row">${(item.source_packets || []).slice(0, 5).map((packet) => `<span class="tag ${packet.credibility === "high" ? "good" : "warn"}">${sourceTypeLabel(packet.source_type)} / ${credibilityLabel(packet.credibility)}</span>`).join("")}</div>
+            <div class="gap-strip">信息缺口：${(item.missing_information || []).join("、") || "暂无"}</div>
+          </article>`).join("")}</div>`;
+      }
+      if (agentId === "structuring") {
+        return `<table class="matrix"><thead><tr><th>竞品</th><th>定位</th><th>核心功能</th><th>可信度</th><th>缺失字段</th></tr></thead><tbody>
+          ${(data.schema_table || []).map((row) => `<tr><td><b>${row.competitor_name}</b></td><td>${row.product_positioning || ""}</td><td>${(row.core_features || []).join("、")}</td><td>${row.confidence_level || ""}</td><td>${(row.missing_fields || []).join("、") || "暂无"}</td></tr>`).join("")}
+        </tbody></table>`;
+      }
+      if (agentId === "comparing") {
+        return `<div class="group-map">
+          <div class="group-box"><h3>行业共性</h3><ul>${(data.common_patterns || []).map((item) => `<li>${item}</li>`).join("")}</ul></div>
+          <div class="group-box"><h3>关键差异</h3><ul>${(data.key_differences || []).map((item) => `<li>${item}</li>`).join("")}</ul></div>
+        </div>
+        <div class="subgrid">${(data.opportunity_points || []).map((item) => `<div class="mini-card"><b>${item.opportunity}</b><span>${item.logic || ""}</span><span>可信度：${credibilityLabel(item.confidence)}</span></div>`).join("")}</div>`;
+      }
+      if (agentId === "quality") {
+        return `<div class="subgrid">
+          <div class="mini-card"><b>是否通过</b><span>${data.passed ? "通过" : "未通过"}</span></div>
+          <div class="mini-card"><b>综合评分</b><span>${data.overall_score || 0}</span></div>
+          <div class="mini-card"><b>是否需要回退</b><span>${data.rollback_needed ? "需要" : "不需要"}</span></div>
+          <div class="mini-card"><b>回退建议</b><span>${data.rollback_target || "无"}</span></div>
+        </div>
+        <table class="matrix"><thead><tr><th>级别</th><th>问题</th><th>建议</th><th>回退目标</th></tr></thead><tbody>
+          ${(data.issues || []).map((item) => `<tr><td>${item.severity}</td><td>${item.description}</td><td>${item.suggestion}</td><td>${item.rollback_target}</td></tr>`).join("")}
+        </tbody></table>`;
+      }
+      return `<pre style="white-space:pre-wrap; overflow:auto">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+    }
+
+    function sourceTypeLabel(type) {
+      return {
+        official_site: "官方来源",
+        docs: "帮助文档",
+        pricing: "价格页",
+        news: "媒体报道",
+        app_store: "应用商店",
+        social: "公开讨论",
+        other: "其他来源"
+      }[type] || "其他来源";
+    }
+
+    function credibilityLabel(value) {
+      return { high: "高可信", medium: "中可信", low: "低可信" }[value] || value || "待确认";
+    }
+
+    function markdownToHtml(markdown) {
+      return escapeHtml(markdown)
+        .replace(/^# (.*)$/gm, "<h3>$1</h3>")
+        .replace(/^## (.*)$/gm, "<h3>$1</h3>")
+        .replace(/^- (.*)$/gm, "<p>• $1</p>")
+        .replace(/\n\n/g, "<br>");
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function renderHandoffSection(agent) {
+      return `
+        <section class="panel">
+          <h2>交接给下一位 Agent 的材料包</h2>
+          <p class="explain">我将把以下材料交接给「${agent.downstream}」，下游 Agent 会基于这些材料继续处理。</p>
+          <div class="handoff-list">
+            ${agent.handoff.map((item) => `<div class="handoff-item">${item}</div>`).join("")}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderExceptionCard(agent, alternate) {
+      const data = alternate || agent.exception;
+      return `
+        <div class="risk-card">
+          <b>风险提示：${data[0]}</b>
+          <p><b>当前风险：</b>当前材料可能不足以支撑稳定横向比较，结论容易过散或过强。</p>
+          <p><b>为什么提示：</b>部分字段缺失、来源口径不一致，或竞品不完全属于同一细分场景。</p>
+          <p><b>建议操作：</b>${data[2]}</p>
+          <div class="button-row">
+            <button class="btn subtle" data-feedback-preset="${agent.id}:继续分析但标记风险">继续分析但标记风险</button>
+            <button class="btn" data-page="${agent.id === "planning" ? "home" : "collecting"}">返回补充信息</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStageOverview(agent, state) {
+      return `
+        <section class="panel">
+          <h2>当前阶段概览</h2>
+          <div class="subgrid">
+            <div class="mini-card"><b>${agent.name}</b><span>${agent.role}</span></div>
+            <div class="mini-card"><b>当前状态</b><span><span class="status-tag ${statusClass(state.status)}">${state.status}</span></span></div>
+            <div class="mini-card"><b>本阶段任务</b><span>${agent.task}</span></div>
+            <div class="mini-card"><b>本阶段产出</b><span>${agent.output}</span></div>
+          </div>
+          <p class="explain" style="margin-top:14px">下一步建议：${nextAdvice(agent.id)}</p>
+        </section>
+      `;
+    }
+
+    function nextAdvice(agentId) {
+      return {
+        planning: "确认竞品范围是否合适，再进入信息采集。",
+        collecting: "查看来源覆盖和信息缺口，必要时补充资料链接。",
+        structuring: "确认字段口径，避免后续对比使用不同标准。",
+        comparing: "确认机会点和风险边界，再生成报告初稿。",
+        writing: "检查报告重点和证据链，再提交质检。",
+        quality: "处理质检建议，决定生成最终报告或回退补充。"
+      }[agentId] || "继续下一步。";
+    }
+
+    function renderActionPanel(agentId) {
+      const actions = {
+        planning: ["确认竞品范围，进入信息采集", "collecting", ["修改竞品名单", "补充报告用途"]],
+        collecting: ["继续结构化处理", "structuring", ["补充资料链接", "重新采集某个竞品"]],
+        structuring: ["确认字段口径，进入对比分析", "comparing", ["标记字段待确认", "返回采集补充资料"]],
+        comparing: ["确认分析结果，生成报告初稿", "writing", ["调整分析维度", "补充资料后重新分析"]],
+        writing: ["提交质检", "quality", ["调整报告重点", "查看证据链"]],
+        quality: ["接受修改建议，生成最终报告", "final", ["回退到信息采集", "回退到报告撰写", "忽略低风险问题并继续"]]
+      }[agentId];
+      return `
+        <section class="panel action-panel">
+          <h2>用户下一步操作</h2>
+          <p class="explain">系统给出建议，但最终判断仍由你确认。选择一个动作继续。</p>
+          <div class="button-row">
+            <button class="btn primary" data-page="${actions[1]}">${actions[0]}</button>
+          </div>
+          <div class="button-row">
+            ${actions[2].map((item) => `<button class="text-button" data-feedback-preset="${agentId}:${item}">${item}</button>`).join("")}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderMechanicsDetails(agent, body, side) {
+      return `
+        <details class="details-panel">
+          <summary>查看本 Agent 如何工作</summary>
+          <div class="details-panel-content">${renderCommonSections(agent)}</div>
+        </details>
+        <details class="details-panel">
+          <summary>查看交接材料</summary>
+          <div class="details-panel-content">${renderHandoffSection(agent)}</div>
+        </details>
+        <details class="details-panel">
+          <summary>查看完整风险机制</summary>
+          <div class="details-panel-content">${side || "<p class='explain'>暂无额外风险提示。</p>"}</div>
+        </details>
+        ${renderFallbackDetails(body)}
+        ${renderRawArtifactDetails(agent.id)}
+      `;
+    }
+
+    function renderRawArtifactDetails(agentId) {
+      const artifact = remoteState.artifacts[agentId];
+      if (!artifact) {
+        return `
+          <details class="details-panel">
+            <summary>查看原始产物</summary>
+            <div class="details-panel-content"><p class="explain">当前阶段还没有后端原始产物。启动并完成对应 Agent 后，这里会显示本阶段的原始 JSON 或 Markdown 内容。</p></div>
+          </details>
+        `;
+      }
+      if (artifact.content_type !== "json") {
+        return `
+          <details class="details-panel">
+            <summary>查看原始产物</summary>
+            <div class="details-panel-content"><pre style="white-space:pre-wrap; overflow:auto">${escapeHtml(String(artifact.data || ""))}</pre></div>
+          </details>
+        `;
+      }
+      return `
+        <details class="details-panel">
+          <summary>查看原始产物</summary>
+          <div class="details-panel-content"><pre style="white-space:pre-wrap; overflow:auto">${escapeHtml(JSON.stringify(artifact.data, null, 2))}</pre></div>
+        </details>
+      `;
+    }
+
+    function renderFeedbackPanel(agentId) {
+      return `
+        <div class="panel feedback-panel">
+          <h2>我想补充 / 修改</h2>
+          <p class="explain">你可以在这里补充信息、调整方向，或要求从当前阶段继续。</p>
+          <label for="feedbackType-${agentId}">修改类型</label>
+          <select id="feedbackType-${agentId}">
+            <option>修改竞品范围</option>
+            <option>补充资料链接</option>
+            <option>调整分析维度</option>
+            <option>修改报告重点</option>
+            <option>对某条结论提出反馈</option>
+            <option>要求重新运行本 Agent</option>
+          </select>
+          <label for="feedbackMessage-${agentId}">补充说明</label>
+          <textarea id="feedbackMessage-${agentId}" placeholder="请输入你想补充或修改的内容，例如：删除 Notion AI、增加 Zoom AI Companion、重点比较价格策略、这条结论太强请改保守。"></textarea>
+          <div class="button-row">
+            <button class="btn primary" data-feedback-submit="${agentId}:self">提交修改并重新运行本 Agent</button>
+            <button class="btn" data-feedback-submit="${agentId}:continue">提交修改并从当前阶段继续</button>
+          </div>
+          <div class="feedback-status" id="feedbackStatus-${agentId}"></div>
+        </div>
+      `;
+    }
+
+    function workspaceChrome(agentId, body, side = "") {
+      const agent = agents.find((item) => item.id === agentId);
+      const state = agentRuntime(agentId);
+      return `
+        <div class="breadcrumb">
+          <button data-page="home">协作流程</button>
+          <span>&gt;</span>
+          <span>${agent.name} 工作间</span>
+        </div>
+        <div class="workspace-header" style="--accent:${agent.accent}">
+          <div class="workspace-title">
+            <span class="eyebrow">${agent.number} / Agent 工作间</span>
+            <h1>${agent.name}</h1>
+            <p>${agent.brief}</p>
+          </div>
+          <aside class="phase-meta">
+            <div class="meta-row"><span>角色定位</span><b>${agent.role}</b></div>
+            <div class="meta-row"><span>本阶段任务</span><b>${agent.task}</b></div>
+            <div class="meta-row"><span>当前状态</span><b><span class="status-tag ${statusClass(state.status)}">${state.status}</span></b></div>
+            <div class="meta-row"><span>本阶段目标</span><b>${agent.goal}</b></div>
+            <div class="meta-row"><span>本阶段产出</span><b>${agent.output}</b></div>
+          </aside>
+        </div>
+        <div class="workspace-grid" style="--accent:${agent.accent}">
+          <div class="content-stack">
+            ${renderStageOverview(agent, state)}
+            ${remoteState.artifacts[agentId] ? renderRemotePanel(agentId) : renderWaitingPanel(agent)}
+            ${renderActionPanel(agentId)}
+            ${renderMechanicsDetails(agent, body, side)}
+          </div>
+          <aside class="side-stack">
+            ${renderFeedbackPanel(agentId)}
+          </aside>
+        </div>
+      `;
+    }
+
+    function renderPlanning() {
+      const task = getTaskValues();
+      const body = `
+        <section class="panel">
+          <h2>任务规划结果</h2>
+          <p class="explain">本 Agent 已将用户需求拆解为分析目标、竞品范围和分析维度。</p>
+          <div class="subgrid">
+            <div class="mini-card"><b>本次分析目标</b><span>围绕「${task.track}」形成可用于产品功能规划的竞品分析报告。</span></div>
+            <div class="mini-card"><b>报告用途</b><span>${task.purpose}</span></div>
+            <div class="mini-card"><b>推荐竞品范围</b><span>${task.rivals}</span></div>
+            <div class="mini-card"><b>需要补充的信息</b><span>建议补充目标用户群体、目标市场区域和预期报告篇幅。</span></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>任务拆解 DAG 图</h2>
+          <p class="explain">从输入需求到可执行分析计划的拆解过程，先收窄范围，再并行定义分析维度与搜索策略。</p>
+          <div class="flow">
+            <div class="flow-node"><b>用户需求</b><span>分析 AI 会议协作工具赛道，用于功能规划。</span></div>
+            <div class="flow-node"><b>范围确认</b><span>锁定 4 个候选竞品，避免赛道过宽。</span></div>
+            <div class="flow-node"><b>维度定义</b><span>功能、价格、定位、反馈、商业模式和 AI 能力。</span></div>
+            <div class="flow-node"><b>交付计划</b><span>依次进入采集、结构化、分析、撰写和质检。</span></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>本次分析维度</h2>
+          <p class="explain">分析维度以产品功能规划为目标，兼顾功能、商业化和用户反馈。</p>
+          <div class="dimension-list">
+            <div class="dimension-card"><b>功能能力</b><span>会议记录、摘要、任务沉淀、协作编辑。</span></div>
+            <div class="dimension-card"><b>价格策略</b><span>免费额度、企业版套餐、AI 能力计费方式。</span></div>
+            <div class="dimension-card"><b>产品定位</b><span>面向办公套件、知识库、会议场景或跨部门协作。</span></div>
+            <div class="dimension-card"><b>用户反馈</b><span>围绕准确率、稳定性、学习成本和生态连接。</span></div>
+            <div class="dimension-card"><b>商业模式</b><span>订阅、套件绑定、企业采购和增值能力。</span></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>范围收敛漏斗图</h2>
+          <p class="explain">从宽泛赛道逐步收窄到本次可执行的竞品范围。</p>
+          <div class="funnel">
+            <div class="funnel-step" style="--w:100%; --c:#3157d5"><span>AI 办公工具</span><small>20+ 类产品</small></div>
+            <div class="funnel-step" style="--w:86%; --c:#0f91b8"><span>会议协作工具</span><small>10+ 类产品</small></div>
+            <div class="funnel-step" style="--w:68%; --c:#16845b"><span>具备会议记录与摘要能力</span><small>6 个重点对象</small></div>
+            <div class="funnel-step" style="--w:50%; --c:#7b4ce3"><span>本次课堂 demo 竞品</span><small>4 个竞品</small></div>
+          </div>
+        </section>
+      `;
+      const side = `
+        <div class="risk-card">
+          <b>风险提示：竞品范围仍需确认</b>
+          <p>Notion AI 更偏知识库与内容生产，和会议协作工具不是完全同类。建议在报告中明确它作为“跨品类参照对象”。</p>
+        </div>
+        ${renderExceptionCard(agents.find((item) => item.id === "planning"))}
+        <div class="risk-card green">
+          <b>是否需要追问</b>
+          <p>当前 demo 可以继续执行。正式项目建议追问目标用户、重点市场和商业化侧重点。</p>
+        </div>
+        <div class="confirm-box">
+          <p>Human-in-the-loop：系统已经给出推荐竞品范围，但最终边界需要产品经理确认。</p>
+          <div class="button-row"><button class="btn primary" data-page="collecting">确认竞品范围，进入信息采集</button></div>
+        </div>
+      `;
+      document.getElementById("planning").innerHTML = workspaceChrome("planning", body, side);
+    }
+
+    function renderCollecting() {
+      const bars = sourceCoverage.map(([name, value, color]) => `
+        <div class="bar-row" style="--accent:${color}">
+          <span>${name}</span><div class="bar-bg"><div class="bar" style="--value:${value}%"></div></div><b>${value}%</b>
+        </div>
+      `).join("");
+      const cards = [
+        ["飞书妙记", "官网、产品页、帮助文档、更新日志、媒体报道", "价格页与企业采购信息需要二次确认", "高可信"],
+        ["腾讯文档智能助手", "官网、产品页、帮助文档、媒体报道、公开讨论", "独立会议场景资料较少", "中高可信"],
+        ["钉钉智能会议", "官网、产品页、帮助文档、更新日志、媒体报道、应用商店评论", "不同版本能力边界需核对", "高可信"],
+        ["Notion AI", "官网、价格页、帮助文档、更新日志、媒体报道、社交平台公开讨论", "中文办公会议场景案例有限", "中高可信"]
+      ].map(([name, sources, gap, trust]) => `
+        <article class="source-card">
+          <h3>${name}</h3>
+          <div class="tag-row">
+            ${sources.split("、").map((source) => `<span class="tag">${source}</span>`).join("")}
+            <span class="tag good">${trust}</span>
+          </div>
+          <div class="gap-strip">信息缺口：${gap}</div>
+        </article>
+      `).join("");
+      const body = `
+        <section class="panel">
+          <h2>公开资料包</h2>
+          <p class="explain">本 Agent 为每个竞品收集公开资料，并标记来源类型、可信度与缺失字段。</p>
+          <div class="source-cards">${cards}</div>
+        </section>
+        <section class="panel">
+          <h2>来源覆盖柱状图</h2>
+          <p class="explain">覆盖率越高，说明公开资料类型越完整，后续结论越容易被验证。</p>
+          <div class="bar-chart">${bars}</div>
+        </section>
+        <section class="panel">
+          <h2>来源可信度分布条</h2>
+          <p class="explain">重点不是资料数量，而是哪些资料能作为强证据，哪些只能作为用户反馈的弱信号。</p>
+          <div class="trust-stack">
+            <div class="trust-row"><span>官方来源</span><div class="trust-track"><div class="trust-fill" style="--value:44%; --c:#3157d5"></div></div><b>44%</b></div>
+            <div class="trust-row"><span>半官方来源</span><div class="trust-track"><div class="trust-fill" style="--value:24%; --c:#0f91b8"></div></div><b>24%</b></div>
+            <div class="trust-row"><span>第三方来源</span><div class="trust-track"><div class="trust-fill" style="--value:20%; --c:#7b4ce3"></div></div><b>20%</b></div>
+            <div class="trust-row"><span>用户评论</span><div class="trust-track"><div class="trust-fill" style="--value:12%; --c:#b46b08"></div></div><b>12%</b></div>
+          </div>
+        </section>
+      `;
+      const side = `
+        ${renderExceptionCard(agents.find((item) => item.id === "collecting"))}
+        <div class="risk-card">
+          <b>异常提示：公开信息不足</b>
+          <p>腾讯文档智能助手和 Notion AI 在“会议协作”场景的直接资料较少，需要在结构化处理阶段降低相关字段置信度。</p>
+        </div>
+        <div class="risk-card rose">
+          <b>是否需要回退</b>
+          <p>暂不需要回退。建议进入结构化处理 Agent，把信息缺口标记为待确认内容。</p>
+        </div>
+      `;
+      document.getElementById("collecting").innerHTML = workspaceChrome("collecting", body, side);
+    }
+
+    function renderStructuring() {
+      const completionRows = products.map((product, idx) => `
+        <tr>
+          <td><b>${product}</b></td>
+          <td class="cell-ok">完整</td>
+          <td class="${idx === 1 ? "cell-mid" : "cell-ok"}">${idx === 1 ? "部分" : "完整"}</td>
+          <td class="${idx === 3 ? "cell-mid" : "cell-ok"}">${idx === 3 ? "部分" : "完整"}</td>
+          <td class="${idx === 0 ? "cell-mid" : "cell-ok"}">${idx === 0 ? "需确认" : "完整"}</td>
+          <td class="${idx === 3 ? "cell-miss" : "cell-mid"}">${idx === 3 ? "缺失" : "部分"}</td>
+        </tr>
+      `).join("");
+      const heatCells = products.map((product, row) => `
+        <div class="heat-label">${product}</div>
+        ${fields.map((field, col) => {
+          const levels = [
+            [8, 18, 8, 34, 42],
+            [10, 46, 24, 30, 38],
+            [8, 16, 14, 28, 34],
+            [28, 22, 48, 16, 66]
+          ];
+          return `<div class="heat-cell" style="--level:${levels[row][col]}%">${field}</div>`;
+        }).join("")}
+      `).join("");
+      const body = `
+        <section class="panel">
+          <h2>资料到 Schema 字段的映射图</h2>
+          <p class="explain">系统先把不同来源映射到统一竞品知识 Schema，再进入对比分析，避免不同资料口径混在一起。</p>
+          <div class="schema-map">
+            <div class="schema-link"><b>官网产品页</b><span>产品定位 / 核心功能</span></div>
+            <div class="schema-link"><b>价格页</b><span>价格模式 / 商业模式</span></div>
+            <div class="schema-link"><b>帮助文档</b><span>使用场景 / AI 能力</span></div>
+            <div class="schema-link"><b>应用评论</b><span>用户反馈 / 痛点</span></div>
+            <div class="schema-link"><b>更新日志</b><span>版本变化 / 近期动态</span></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>结构化竞品知识表</h2>
+          <p class="explain">本 Agent 将散乱资料整理为统一字段，便于后续对比分析。</p>
+          <table class="matrix">
+            <thead><tr><th>竞品</th><th>核心场景</th><th>AI 能力</th><th>协作方式</th><th>商业化线索</th></tr></thead>
+            <tbody>
+              <tr><td><b>飞书妙记</b></td><td>会议记录、转写、摘要</td><td>语音转文字、章节摘要、重点提炼</td><td>与飞书文档和会议协作连接</td><td>企业套件绑定，价格需结合组织版本确认</td></tr>
+              <tr><td><b>腾讯文档智能助手</b></td><td>文档生产与协作</td><td>内容生成、总结、改写、表格辅助</td><td>与腾讯文档在线协作连接</td><td>办公生态能力，会议场景商业化信息较少</td></tr>
+              <tr><td><b>钉钉智能会议</b></td><td>会议记录、摘要、待办沉淀</td><td>会议纪要、行动项识别、智能助手</td><td>与钉钉组织、会议和任务流程连接</td><td>企业协作套件与增值 AI 能力</td></tr>
+              <tr><td><b>Notion AI</b></td><td>知识库与内容协作</td><td>总结、写作、问答、知识库检索</td><td>与页面、数据库和团队空间连接</td><td>按席位和 AI 附加能力计费</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h2>字段完成情况</h2>
+          <p class="explain">Schema 字段完成度矩阵展示每个竞品在关键字段上的整理状态。</p>
+          <table class="matrix">
+            <thead><tr><th>竞品</th><th>功能</th><th>价格</th><th>定位</th><th>反馈</th><th>商业模式</th></tr></thead>
+            <tbody>${completionRows}</tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h2>缺失字段热力图</h2>
+          <p class="explain">颜色越深代表缺失越严重，需要在质检前补充或降低结论置信度。</p>
+          <div class="heatmap">
+            <div class="heat-label">竞品</div>
+            ${fields.map((field) => `<div class="heat-label">${field}</div>`).join("")}
+            ${heatCells}
+          </div>
+        </section>
+      `;
+      const side = `
+        ${renderExceptionCard(agents.find((item) => item.id === "structuring"))}
+        <div class="risk-card rose">
+          <b>冲突信息：价格口径不一致</b>
+          <p>部分来源按企业套件计费，部分来源按 AI 增值能力描述。建议报告中用“公开价格线索”而非精确价格结论。</p>
+        </div>
+        <div class="risk-card">
+          <b>待确认内容</b>
+          <p>应用商店评论样本量不足，用户反馈只能作为信号，不应作为定量满意度结论。</p>
+        </div>
+        <div class="confirm-box">
+          <p>Human-in-the-loop：字段口径会影响后续比较，建议产品经理确认价格、定位和用户反馈的表达边界。</p>
+          <div class="button-row"><button class="btn primary" data-page="comparing">确认字段口径，进入对比分析</button></div>
+        </div>
+      `;
+      document.getElementById("structuring").innerHTML = workspaceChrome("structuring", body, side);
+    }
+
+    function renderComparing() {
+      const abilityBars = [
+        ["飞书妙记", "84%", "#3157d5"],
+        ["腾讯文档智能助手", "72%", "#0f91b8"],
+        ["钉钉智能会议", "86%", "#16845b"],
+        ["Notion AI", "78%", "#7b4ce3"]
+      ].map(([name, value, color]) => `
+        <div class="bar-row" style="--accent:${color}">
+          <span>${name}</span><div class="bar-bg"><div class="bar" style="--value:${value}"></div></div><b>${value}</b>
+        </div>
+      `).join("");
+      const body = `
+        <section class="panel">
+          <h2>多维度对比矩阵</h2>
+          <p class="explain">本 Agent 基于结构化竞品知识表，对功能、价格、AI 能力、用户反馈和商业模式进行横向比较。</p>
+          <table class="matrix">
+            <thead><tr><th>维度</th><th>飞书妙记</th><th>腾讯文档智能助手</th><th>钉钉智能会议</th><th>Notion AI</th></tr></thead>
+            <tbody>
+              <tr><td><b>功能</b></td><td>会议转写与摘要成熟</td><td>文档智能更突出</td><td>会议到任务闭环突出</td><td>知识库写作与总结突出</td></tr>
+              <tr><td><b>价格</b></td><td>与企业套件关联</td><td>公开口径不完整</td><td>与组织协作套件关联</td><td>按席位与 AI 附加能力</td></tr>
+              <tr><td><b>AI 能力</b></td><td>会议内容理解强</td><td>文本生成和表格辅助强</td><td>行动项识别和组织流程强</td><td>知识问答和写作强</td></tr>
+              <tr><td><b>用户反馈</b></td><td>关注转写准确率</td><td>关注入口和场景连贯性</td><td>关注组织流程连接</td><td>关注英文生态和知识库体验</td></tr>
+              <tr><td><b>商业模式</b></td><td>企业办公套件驱动</td><td>办公生态驱动</td><td>企业组织协同驱动</td><td>订阅与 AI 增值驱动</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h2>机会点优先级象限图</h2>
+          <p class="explain">横轴表示实现难度，纵轴表示潜在价值，越靠左上越适合优先验证。</p>
+          <div class="quadrant">
+            <span class="axis-label axis-top">潜在价值高</span>
+            <span class="axis-label axis-bottom">潜在价值低</span>
+            <span class="axis-label axis-left">实现难度低</span>
+            <span class="axis-label axis-right">实现难度高</span>
+            <span class="point" style="--x:30%; --y:76%; --accent:#16845b">会议待办自动沉淀</span>
+            <span class="point" style="--x:44%; --y:66%; --accent:#3157d5">跨工具纪要同步</span>
+            <span class="point" style="--x:68%; --y:72%; --accent:#7b4ce3">企业知识库问答</span>
+            <span class="point" style="--x:70%; --y:36%; --accent:#b46b08">多语言实时协作</span>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>会议场景适配度参考评分</h2>
+          <p class="explain">评分用于课堂 demo 的相对展示，正式项目应替换为真实评价口径。</p>
+          <div class="bar-chart">${abilityBars}</div>
+        </section>
+        <section class="panel">
+          <h2>行业共性与关键差异</h2>
+          <div class="group-map">
+            <div class="group-box">
+              <h3>行业共性</h3>
+              <ul><li>AI 摘要已经成为基础能力。</li><li>协作套件内的上下文连接越来越关键。</li><li>公开价格口径普遍依赖企业版本。</li></ul>
+            </div>
+            <div class="group-box">
+              <h3>关键差异</h3>
+              <ul><li>钉钉更强调组织流程闭环。</li><li>飞书妙记更聚焦会议内容资产化。</li><li>Notion AI 更像跨品类知识库参照。</li></ul>
+            </div>
+          </div>
+        </section>
+      `;
+      const side = `
+        ${renderExceptionCard(agents.find((item) => item.id === "comparing"))}
+        <div class="risk-card">
+          <b>分析风险：结论需要注明边界</b>
+          <p>Notion AI 的会议场景不是主定位，不能直接与国内会议工具作完全等价比较。</p>
+        </div>
+        <div class="risk-card green">
+          <b>初步机会点</b>
+          <p>优先验证“会议待办自动沉淀”和“跨工具纪要同步”，两者价值高且实现路径相对清晰。</p>
+        </div>
+      `;
+      document.getElementById("comparing").innerHTML = workspaceChrome("comparing", body, side);
+    }
+
+    function renderWriting() {
+      const body = `
+        <section class="panel">
+          <h2>报告结构</h2>
+          <p class="explain">本 Agent 将分析过程组织为面向产品规划的报告初稿。</p>
+          <div class="tree">
+            <div class="tree-row"><div class="tree-node">执行摘要</div><div class="tree-leaves"><span class="leaf">赛道判断</span><span class="leaf">最重要发现</span><span class="leaf">优先机会点</span></div></div>
+            <div class="tree-row"><div class="tree-node">竞品概览</div><div class="tree-leaves"><span class="leaf">飞书妙记</span><span class="leaf">腾讯文档智能助手</span><span class="leaf">钉钉智能会议</span><span class="leaf">Notion AI</span></div></div>
+            <div class="tree-row"><div class="tree-node">对比分析</div><div class="tree-leaves"><span class="leaf">功能矩阵</span><span class="leaf">AI 能力</span><span class="leaf">商业模式</span><span class="leaf">用户反馈</span></div></div>
+            <div class="tree-row"><div class="tree-node">产品机会</div><div class="tree-leaves"><span class="leaf">会议待办沉淀</span><span class="leaf">跨工具同步</span><span class="leaf">知识库问答</span></div></div>
+            <div class="tree-row"><div class="tree-node">风险说明</div><div class="tree-leaves"><span class="leaf">价格口径</span><span class="leaf">样本不足</span><span class="leaf">跨品类参照</span></div></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>核心发现</h2>
+          <div class="subgrid">
+            <div class="mini-card"><b>会议内容正在资产化</b><span>领先产品不只做转写，而是把会议内容沉淀到文档、任务和知识库。</span></div>
+            <div class="mini-card"><b>组织流程连接决定差异</b><span>会议之后的行动项、责任人和复盘路径，是产品价值延伸的关键。</span></div>
+            <div class="mini-card"><b>AI 能力从生成走向理解</b><span>摘要、重点提炼和问答需要结合上下文，单次生成已经不足以构成壁垒。</span></div>
+            <div class="mini-card"><b>价格比较需要保守表达</b><span>公开资料常按套件或企业版描述，不能直接得出精确价格高低。</span></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>机会点证据链</h2>
+          <p class="explain">每个机会点都必须经过资料依据、结构化字段、分析判断和报告结论四步追溯。</p>
+          <div class="evidence-chain">
+            <div class="evidence-row"><div class="evidence-piece"><b>资料依据</b><br>飞书妙记和钉钉均强调会议纪要和行动项。</div><div class="evidence-piece"><b>结构化字段</b><br>核心功能 / AI 能力 / 协作方式</div><div class="evidence-piece"><b>分析判断</b><br>会议后流程闭环成为竞争重点。</div><div class="evidence-piece"><b>报告结论</b><br>优先验证会议待办自动沉淀。</div></div>
+            <div class="evidence-row"><div class="evidence-piece"><b>资料依据</b><br>公开反馈关注会议结果在文档、任务和知识库之间流转。</div><div class="evidence-piece"><b>结构化字段</b><br>使用场景 / 协作方式 / 用户痛点</div><div class="evidence-piece"><b>分析判断</b><br>跨工具搬运成本影响协作效率。</div><div class="evidence-piece"><b>报告结论</b><br>先支持主流文档入口同步。</div></div>
+            <div class="evidence-row"><div class="evidence-piece"><b>资料依据</b><br>Notion AI 强调知识库问答，但会议工具侧尚未充分闭环。</div><div class="evidence-piece"><b>结构化字段</b><br>AI 能力 / 知识沉淀 / 产品定位</div><div class="evidence-piece"><b>分析判断</b><br>长期知识问答有价值，但需要更多企业案例。</div><div class="evidence-piece"><b>报告结论</b><br>作为二阶段能力验证。</div></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>报告初稿</h2>
+          <div class="report-preview">
+            <h3>执行摘要</h3>
+            <p>AI 会议协作工具的竞争焦点正在从“会议记录是否准确”转向“会议内容是否能进入组织工作流”。飞书妙记与钉钉智能会议在会议场景更直接，腾讯文档智能助手偏文档协作，Notion AI 可作为知识库和内容智能参照。</p>
+            <h3>机会点说明</h3>
+            <ul>
+              <li>优先验证会议待办自动沉淀，将纪要、责任人和截止时间直接进入任务系统。</li>
+              <li>建设跨工具纪要同步能力，降低会议内容在多个协作工具之间迁移的成本。</li>
+              <li>将长期会议记录沉淀为可问答知识库，但需要更多企业场景资料支撑。</li>
+            </ul>
+          </div>
+        </section>
+      `;
+      const side = `
+        ${renderExceptionCard(agents.find((item) => item.id === "writing"))}
+        <div class="risk-card">
+          <b>风险与信息缺口</b>
+          <p>报告初稿已保留价格口径、用户评论样本和跨品类参照的限制，等待质检审查 Agent 确认是否通过。</p>
+        </div>
+      `;
+      document.getElementById("writing").innerHTML = workspaceChrome("writing", body, side);
+    }
+
+    function renderQuality() {
+      const body = `
+        <section class="panel">
+          <h2>质检结果</h2>
+          <p class="explain">本 Agent 检查来源完整性、字段一致性、结论支撑关系和推断跳跃。</p>
+          <table class="matrix">
+            <thead><tr><th>检查项</th><th>状态</th><th>发现的问题</th><th>修改建议</th></tr></thead>
+            <tbody>
+              <tr><td><b>来源完整性检查</b></td><td class="cell-mid">需局部复核</td><td>腾讯文档智能助手会议场景资料偏少</td><td>在最终报告中标记为文档协作参照</td></tr>
+              <tr><td><b>字段一致性检查</b></td><td class="cell-ok">通过</td><td>主要字段已映射到统一口径</td><td>保留字段完成情况说明</td></tr>
+              <tr><td><b>结论支撑关系检查</b></td><td class="cell-ok">通过</td><td>机会点与来源、字段、对比分析能够对应</td><td>保留证据链</td></tr>
+              <tr><td><b>推断跳跃检查</b></td><td class="cell-mid">需修订</td><td>价格高低不能直接比较</td><td>改为“公开价格线索不完全可比”</td></tr>
+              <tr><td><b>报告一致性检查</b></td><td class="cell-ok">通过</td><td>报告章节与分析过程一致</td><td>可以输出最终报告</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h2>结论可信度评分图</h2>
+          <p class="explain">按结论支撑材料、字段完整性和是否存在跨品类比较进行分级。</p>
+          <div class="qc-score">
+            <div class="score-box"><b style="color:#16845b">7</b><span>高可信结论</span></div>
+            <div class="score-box"><b style="color:#3157d5">5</b><span>中可信结论</span></div>
+            <div class="score-box"><b style="color:#b46b08">2</b><span>低可信结论</span></div>
+            <div class="score-box"><b style="color:#c43d5e">3</b><span>待确认结论</span></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>回退路径图</h2>
+          <p class="explain">如果质检不通过，应回退到对应 Agent 补充资料或修正结论。</p>
+          <div class="rollback">
+            <button class="rollback-step active" data-page="collecting"><b>回到信息采集 Agent</b><span>补充会议场景资料和公开评论样本。</span></button>
+            <button class="rollback-step active" data-page="structuring"><b>回到结构化处理 Agent</b><span>修正价格口径和字段置信度。</span></button>
+            <button class="rollback-step" data-page="comparing"><b>回到对比分析 Agent</b><span>调整跨品类竞品的比较边界。</span></button>
+            <button class="rollback-step" data-page="writing"><b>回到报告撰写 Agent</b><span>把风险提示写入最终报告。</span></button>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>被驳回结论示例</h2>
+          <p class="explain">质检 Agent 不只打分，还会驳回缺少依据的强判断，并要求改成弱表述或回退补充资料。</p>
+          <div class="evidence-chain">
+            <div class="evidence-row">
+              <div class="evidence-piece"><b>原结论</b><br>腾讯文档智能助手用户体验较弱。</div>
+              <div class="evidence-piece"><b>质检意见</b><br>缺少足够用户评论或评分支撑。</div>
+              <div class="evidence-piece"><b>修正后</b><br>公开资料中会议场景信息较少，暂不宜直接判断用户体验强弱。</div>
+              <div class="evidence-piece"><b>处理方式</b><br>改为弱表述，并回退信息采集补充用户反馈样本。</div>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>当前报告风险等级条</h2>
+          <p class="explain">综合风险为中低。主要风险来自价格口径、样本不足和跨品类参照。</p>
+          <div class="risk-meter"><div class="meter-track"><div class="meter-pin" style="--pos:58%"></div></div></div>
+        </section>
+      `;
+      const side = `
+        ${renderExceptionCard(agents.find((item) => item.id === "quality"))}
+        <div class="risk-card green">
+          <b>是否通过质检</b>
+          <p>有条件通过。最终报告必须保留“公开资料限制”和“价格口径不可完全横比”的说明。</p>
+        </div>
+        <div class="risk-card">
+          <b>发现的问题</b>
+          <p>公开信息不足、来源信息冲突和结论边界都已经显性标注，不影响课堂 demo 完整跑通。</p>
+        </div>
+        <div class="confirm-box">
+          <p>Human-in-the-loop：系统给出修改建议后，需要用户确认接受弱表述与风险边界，再生成最终报告。</p>
+          <div class="button-row"><button class="btn primary" data-page="final">接受修改建议，生成最终报告</button></div>
+        </div>
+      `;
+      document.getElementById("quality").innerHTML = workspaceChrome("quality", body, side);
+    }
+
+    function renderFinal() {
+      const reportText = `# AI 会议协作工具赛道竞品分析报告
+
+## 执行摘要
+AI 会议协作工具的竞争焦点正在从会议记录转向会议内容进入组织工作流。飞书妙记与钉钉智能会议在会议场景更直接，腾讯文档智能助手偏文档协作，Notion AI 可作为知识库和内容智能参照。
+
+## 核心发现
+1. 会议内容资产化成为基础趋势。
+2. 会议之后的任务沉淀和责任人跟进，是差异化空间。
+3. 公开价格信息存在口径差异，不能直接判断绝对高低。
+4. 知识库问答是中长期机会，但需要更多企业案例验证。
+
+## 产品机会点
+优先验证会议待办自动沉淀和跨工具纪要同步；企业知识库问答可作为二阶段能力。
+
+## 风险与信息缺口
+腾讯文档智能助手的会议场景资料较少，Notion AI 与会议协作工具不完全同类，用户评论样本不适合支持定量结论。`;
+      const hasRemoteReport = Boolean(remoteState.result?.final_report_markdown);
+      const staticReportOpen = hasRemoteReport
+        ? `<details class="panel" style="margin-top:18px; padding:0; overflow:hidden"><summary style="padding:18px 22px; cursor:pointer; font-weight:850; color:#3157d5">示例报告</summary><div style="padding:0 22px 22px">`
+        : "";
+      const staticReportClose = hasRemoteReport ? `</div></details>` : "";
+      const reportModeNote = hasRemoteReport
+        ? ""
+        : `<div class="risk-card" style="margin-top:18px"><b>示例报告</b><p>当前未读取到后端生成的最终报告，下方展示本地 Demo 报告。启动并完成后端运行后，本页会优先展示后端报告，复制和导出也会使用后端报告。</p></div>`;
+      const final = document.getElementById("final");
+      final.innerHTML = `
+        <div class="final-layout">
+          <article class="final-report">
+            <span class="eyebrow" style="color:#3157d5; background:#e9efff; border-color:#d3dcff;">质检后最终报告</span>
+            <h1>AI 会议协作工具赛道竞品分析报告</h1>
+            <p>本报告基于任务规划、公开资料采集、结构化处理、对比分析、报告撰写和质检审查 6 个 Agent 的协作结果生成。</p>
+            ${renderRemoteResultSection()}
+            ${reportModeNote}
+
+            ${staticReportOpen}
+            <h2>执行摘要</h2>
+            <p>AI 会议协作工具的竞争焦点正在从“记录会议”转向“让会议内容进入组织工作流”。飞书妙记与钉钉智能会议在会议场景更直接，腾讯文档智能助手偏文档协作，Notion AI 可作为知识库和内容智能参照。</p>
+
+            <h2>竞品概览</h2>
+            <table class="matrix">
+              <thead><tr><th>竞品</th><th>主要定位</th><th>可信度标记</th></tr></thead>
+              <tbody>
+                <tr><td><b>飞书妙记</b></td><td>会议记录、转写和内容沉淀</td><td class="cell-ok">高可信</td></tr>
+                <tr><td><b>腾讯文档智能助手</b></td><td>文档协作和内容智能</td><td class="cell-mid">中高可信</td></tr>
+                <tr><td><b>钉钉智能会议</b></td><td>会议到组织流程闭环</td><td class="cell-ok">高可信</td></tr>
+                <tr><td><b>Notion AI</b></td><td>知识库、写作和团队内容协作</td><td class="cell-mid">中高可信</td></tr>
+              </tbody>
+            </table>
+
+            <h2>对比矩阵</h2>
+            <table class="matrix">
+              <thead><tr><th>维度</th><th>优势方向</th><th>规划启发</th></tr></thead>
+              <tbody>
+                <tr><td><b>功能</b></td><td>会议记录、摘要、行动项、知识沉淀</td><td>围绕会议后流程设计，而非只做转写。</td></tr>
+                <tr><td><b>AI 能力</b></td><td>内容理解、重点提炼、问答、任务识别</td><td>优先强化“理解会议并生成可执行结果”。</td></tr>
+                <tr><td><b>商业模式</b></td><td>企业套件绑定、订阅、AI 增值</td><td>报告不直接比较绝对价格，改为分析公开价格线索。</td></tr>
+              </tbody>
+            </table>
+
+            <h2>核心发现</h2>
+            <p>会议内容资产化、组织流程连接和长期知识问答，是本赛道最重要的三个趋势。产品规划应优先解决会议结果无法持续追踪的问题，再扩展到跨工具同步和知识库问答。</p>
+            <h2>查看依据入口</h2>
+            <p>每条核心发现都保留了可追溯入口，你可以回到信息采集、结构化处理、对比分析或质检审查阶段查看依据和风险边界。</p>
+            <div class="trace-grid">
+              <article class="trace-card" style="--accent:#16845b">
+                <h3>会议内容资产化成为基础趋势</h3>
+                <p><b>查看依据：</b>飞书妙记强调会议转写、摘要和内容沉淀；钉钉智能会议强调纪要、行动项和组织流程连接。</p>
+                <p><b>质检状态：</b><span class="status-tag done">通过</span></p>
+                <p><b>风险边界：</b>公开资料无法验证真实企业转化效果，结论只用于产品规划方向判断。</p>
+                <div class="trace-actions"><button class="btn subtle" data-page="collecting">返回信息采集 Agent 查看依据</button><button class="btn" data-page="quality">查看质检状态</button></div>
+              </article>
+              <article class="trace-card" style="--accent:#3157d5">
+                <h3>会议后流程闭环是优先机会点</h3>
+                <p><b>查看依据：</b>结构化字段显示核心功能、AI 能力和协作方式都在向任务沉淀延伸。</p>
+                <p><b>质检状态：</b><span class="status-tag done">通过</span></p>
+                <p><b>风险边界：</b>机会优先级为课堂 demo 相对判断，正式项目应替换为用户访谈和真实使用数据。</p>
+                <div class="trace-actions"><button class="btn subtle" data-page="structuring">返回结构化处理 Agent 查看字段</button><button class="btn" data-page="comparing">查看机会点分析</button></div>
+              </article>
+              <article class="trace-card" style="--accent:#b46b08">
+                <h3>价格比较需要保守表达</h3>
+                <p><b>查看依据：</b>部分来源按企业套件描述，部分来源按 AI 增值能力描述，公开口径不完全一致。</p>
+                <p><b>质检状态：</b><span class="status-tag review">有条件通过</span></p>
+                <p><b>风险边界：</b>最终报告不直接判断价格高低，只保留公开价格线索与不确定性说明。</p>
+                <div class="trace-actions"><button class="btn subtle" data-page="quality">查看质检建议</button><button class="btn" data-page="writing">查看报告改写</button></div>
+              </article>
+            </div>
+
+            <h2>产品机会点</h2>
+            <div class="quadrant" style="height:280px">
+              <span class="axis-label axis-top">潜在价值高</span>
+              <span class="axis-label axis-bottom">潜在价值低</span>
+              <span class="axis-label axis-left">实现难度低</span>
+              <span class="axis-label axis-right">实现难度高</span>
+              <span class="point" style="--x:30%; --y:76%; --accent:#16845b">会议待办自动沉淀</span>
+              <span class="point" style="--x:44%; --y:66%; --accent:#3157d5">跨工具纪要同步</span>
+              <span class="point" style="--x:68%; --y:72%; --accent:#7b4ce3">企业知识库问答</span>
+            </div>
+
+            <h2>风险与信息缺口</h2>
+            <p>腾讯文档智能助手在会议场景的公开资料较少；Notion AI 与会议协作工具不完全同类；用户评论样本不适合支持定量满意度结论；价格信息存在企业套件和 AI 增值能力的口径差异。</p>
+
+            <h2>来源清单</h2>
+            <p>本 demo 使用的来源类型包括官网、产品页、价格页、帮助文档、更新日志、媒体报道、应用商店评论和社交平台公开讨论。正式调研应替换为真实链接与采集时间。</p>
+
+            <h2>质检状态</h2>
+            <p>质检审查 Agent 给出“有条件通过”。最终报告已保留公开资料限制、跨品类参照边界和价格口径不可完全横比的说明。</p>
+            ${staticReportClose}
+
+            <div class="toolbar">
+              <button class="btn" data-page="quality">返回质检结果</button>
+              <button class="btn" data-page="home">返回协作流程</button>
+              <button class="btn subtle" id="copyReport">复制报告</button>
+              <button class="btn primary" id="downloadReport">导出 Markdown</button>
+            </div>
+          </article>
+
+          <aside class="side-stack">
+            <div class="risk-card green">
+              <b>质检通过状态</b>
+              <p>有条件通过。风险边界已写入最终报告。</p>
+            </div>
+            <div class="panel">
+              <h2>报告组成</h2>
+              <div class="tag-row">
+                <span class="tag good">执行摘要</span>
+                <span class="tag good">竞品概览</span>
+                <span class="tag good">对比矩阵</span>
+                <span class="tag good">核心发现</span>
+                <span class="tag good">产品机会点</span>
+                <span class="tag warn">风险与信息缺口</span>
+                <span class="tag good">来源清单</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      `;
+      final.dataset.report = remoteState.result?.final_report_markdown || reportText;
+    }
+
+    function renderRemoteResultSection() {
+      if (!remoteState.result) return "";
+      const report = remoteState.result.final_report_markdown || "";
+      const quality = remoteState.result.quality_report || {};
+      return `
+        <section class="panel" style="margin-top:18px">
+          <h2>后端生成的最终报告</h2>
+          <p class="explain">以下内容来自本次运行的 output 产物，不是静态页面写死结果。</p>
+          <div class="subgrid">
+            <div class="mini-card"><b>运行编号</b><span>${remoteState.result.run_id || remoteState.runId}</span></div>
+            <div class="mini-card"><b>质检评分</b><span>${quality.overall_score || 0}</span></div>
+            <div class="mini-card"><b>质检状态</b><span>${quality.passed ? "通过" : "未通过或待确认"}</span></div>
+            <div class="mini-card"><b>回退建议</b><span>${quality.rollback_target || "无"}</span></div>
+          </div>
+          <div class="report-preview">${markdownToHtml(report)}</div>
+        </section>
+      `;
+    }
+
+    function renderAll() {
+      renderAgentCards();
+      renderAgentChain();
+      renderPlanning();
+      renderCollecting();
+      renderStructuring();
+      renderComparing();
+      renderWriting();
+      renderQuality();
+      renderFinal();
+      updateTopStatus(document.querySelector(".page.active")?.id || "home");
+    }
+
+    function clearDemoTimers() {
+      runtime.timers.forEach((timer) => clearTimeout(timer));
+      runtime.timers = [];
+    }
+
+    function resetRuntime() {
+      clearDemoTimers();
+      if (remoteState.pollingTimer) {
+        clearInterval(remoteState.pollingTimer);
+        remoteState.pollingTimer = null;
+      }
+      runtime.running = false;
+      runtime.currentAgentId = null;
+      runtime.message = "运行状态：等待启动后端工作流";
+      runtime.quality = "质检状态：未进入质检";
+      runtime.progress = 0;
+      remoteState.runId = "";
+      remoteState.artifacts = {};
+      remoteState.result = null;
+      remoteState.latestError = "";
+      agents.forEach((agent) => {
+        runtime.agents[agent.id] = {
+          status: agent.defaultStatus,
+          progress: agent.defaultProgress,
+          active: false,
+          risk: agent.id === "quality" ? "待质检" : "无",
+          enterable: agent.id === "planning"
+        };
+      });
+      renderAll();
+    }
+
+    function markAgent(agentId, changes) {
+      runtime.agents[agentId] = { ...runtime.agents[agentId], ...changes };
+      renderAll();
+    }
+
+    async function startDemoRun() {
+      try {
+        await startBackendRun();
+      } catch (error) {
+        remoteState.apiAvailable = false;
+        remoteState.latestError = error.message || String(error);
+        startFallbackSimulation();
+      }
+    }
+
+    async function startBackendRun() {
+      resetRuntime();
+      runtime.running = true;
+      runtime.message = "运行状态：正在请求后端启动多 Agent 工作流";
+      renderAll();
+      const task = buildRunPayload();
+      const response = await fetch(`${API_BASE}/api/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(task)
+      });
+      if (!response.ok) {
+        throw new Error(`后端启动失败：${response.status}`);
+      }
+      const payload = await response.json();
+      remoteState.runId = payload.run_id;
+      runtime.message = payload.demo_mode
+        ? "运行状态：后端已启动，Demo mode 使用本地示例数据"
+        : "运行状态：后端已启动，正在调用真实 API";
+      startStatusPolling();
+      await pollStatusOnce();
+    }
+
+    function buildRunPayload() {
+      const task = getTaskValues();
+      return {
+        industry: task.track,
+        target_companies: task.rivals.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean).slice(0, 6),
+        dimensions: task.focus.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean).slice(0, 10),
+        report_usage: task.purpose,
+        source_scope: task.sources.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean)
+      };
+    }
+
+    function startStatusPolling() {
+      if (remoteState.pollingTimer) clearInterval(remoteState.pollingTimer);
+      remoteState.pollingTimer = setInterval(pollStatusOnce, 2000);
+    }
+
+    async function pollStatusOnce() {
+      if (!remoteState.runId) return;
+      const response = await fetch(`${API_BASE}/api/runs/${remoteState.runId}/status`);
+      if (!response.ok) throw new Error(`状态读取失败：${response.status}`);
+      const status = await response.json();
+      applyBackendStatus(status);
+      await preloadCompletedArtifacts(status);
+      if (status.status === "completed" || status.status === "failed") {
+        clearInterval(remoteState.pollingTimer);
+        remoteState.pollingTimer = null;
+        runtime.running = false;
+        if (status.status === "completed") {
+          await loadFinalResult();
+        }
+      }
+      renderAll();
+    }
+
+    function applyBackendStatus(status) {
+      runtime.progress = status.progress || 0;
+      runtime.message = status.demo_mode
+        ? `运行状态：${status.latest_log || "Demo mode 正在运行"}`
+        : `运行状态：${status.latest_log || "真实 API 工作流正在运行"}`;
+      runtime.quality = status.current_agent === "quality" || status.agent_status?.quality === "completed"
+        ? `质检状态：${statusLabel(status.agent_status?.quality)}`
+        : "质检状态：未进入质检";
+      agents.forEach((agent) => {
+        const raw = status.agent_status?.[agent.id] || "waiting";
+        runtime.agents[agent.id] = {
+          ...runtime.agents[agent.id],
+          status: statusLabel(raw),
+          progress: raw === "completed" ? 100 : raw === "running" ? Math.max(20, runtime.progress) : runtime.agents[agent.id].progress,
+          active: status.current_agent === agent.id && raw === "running",
+          risk: raw === "failed" ? "失败" : raw === "rollback_needed" ? "需回退" : runtime.agents[agent.id].risk,
+          enterable: raw !== "waiting"
+        };
+      });
+    }
+
+    async function preloadCompletedArtifacts(status) {
+      const tasks = agents
+        .filter((agent) => status.agent_status?.[agent.id] === "completed" && !remoteState.artifacts[agent.id])
+        .map((agent) => loadAgentArtifact(agent.id));
+      await Promise.allSettled(tasks);
+    }
+
+    async function loadAgentArtifact(agentId) {
+      if (!remoteState.runId) return;
+      const response = await fetch(`${API_BASE}/api/runs/${remoteState.runId}/agent/${agentId}`);
+      if (response.ok) {
+        remoteState.artifacts[agentId] = await response.json();
+      }
+    }
+
+    async function loadFinalResult() {
+      if (!remoteState.runId) return;
+      const response = await fetch(`${API_BASE}/api/runs/${remoteState.runId}/result`);
+      if (response.ok) {
+        remoteState.result = await response.json();
+      }
+    }
+
+    async function submitFeedback(agentId, rerunFrom) {
+      const typeEl = document.getElementById(`feedbackType-${agentId}`);
+      const messageEl = document.getElementById(`feedbackMessage-${agentId}`);
+      const statusEl = document.getElementById(`feedbackStatus-${agentId}`);
+      const feedbackType = typeEl?.value || "对某条结论提出反馈";
+      const message = (messageEl?.value || "").trim();
+      if (!message) {
+        if (statusEl) statusEl.textContent = "请先填写你想补充或修改的内容。";
+        return;
+      }
+      if (!remoteState.runId) {
+        if (statusEl) statusEl.textContent = "已记录在页面中。启动后端运行后，可提交到当前 run。";
+        return;
+      }
+      try {
+        const response = await fetch(`${API_BASE}/api/runs/${remoteState.runId}/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agent_id: agentId,
+            feedback_type: feedbackType,
+            message,
+            rerun_from: rerunFrom
+          })
+        });
+        if (!response.ok) throw new Error(`提交失败：${response.status}`);
+        if (statusEl) statusEl.textContent = rerunFrom === "self" ? "修改意见已提交，后端已记录重新运行本 Agent 的请求。" : "修改意见已提交，后端已记录从当前阶段继续的请求。";
+      } catch (error) {
+        if (statusEl) statusEl.textContent = `暂未提交到后端：${error.message || error}`;
+      }
+    }
+
+    function startFallbackSimulation() {
+      const fallbackReason = remoteState.latestError;
+      resetRuntime();
+      runtime.running = true;
+      remoteState.latestError = fallbackReason;
+      runtime.message = `运行状态：后端不可用，已进入前端 fallback 演示。原因：${fallbackReason}`;
+      const steps = [
+        ["planning", "执行中", 18, "运行状态：正在执行：任务规划 Agent", "无"],
+        ["planning", "已完成", 26, "运行状态：任务规划 Agent 已完成，正在交接给信息采集 Agent", "无"],
+        ["collecting", "执行中", 38, "运行状态：正在执行：信息采集 Agent", "公开信息不足"],
+        ["collecting", "已完成", 48, "运行状态：信息采集 Agent 已完成，正在交接给结构化处理 Agent", "公开信息不足"],
+        ["structuring", "执行中", 58, "运行状态：正在执行：结构化处理 Agent", "来源信息冲突"],
+        ["structuring", "已完成", 66, "运行状态：结构化处理 Agent 已完成，正在交接给对比分析 Agent", "来源信息冲突"],
+        ["comparing", "执行中", 74, "运行状态：正在执行：对比分析 Agent", "边界需说明"],
+        ["comparing", "已完成", 82, "运行状态：对比分析 Agent 已完成，正在交接给报告撰写 Agent", "边界需说明"],
+        ["writing", "执行中", 88, "运行状态：正在执行：报告撰写 Agent", "保留风险边界"],
+        ["writing", "已完成", 92, "运行状态：报告撰写 Agent 已完成，正在交接给质检审查 Agent", "保留风险边界"],
+        ["quality", "执行中", 96, "运行状态：正在执行：质检审查 Agent", "发现 2 个问题"],
+        ["quality", "需局部复核", 98, "运行状态：质检发现 2 个问题，建议局部回退", "需局部复核"],
+        ["quality", "有条件通过", 100, "运行状态：Demo 已完成，最终报告可查看", "有条件通过"]
+      ];
+      steps.forEach((step, index) => {
+        const timer = setTimeout(() => {
+          const [agentId, status, progress, message, risk] = step;
+          agents.forEach((agent) => {
+            runtime.agents[agent.id].active = agent.id === agentId && status === "执行中";
+            if (pageOrder.indexOf(agent.id) <= pageOrder.indexOf(agentId)) {
+              runtime.agents[agent.id].enterable = true;
+            }
+          });
+          runtime.currentAgentId = agentId;
+          runtime.progress = progress;
+          runtime.message = message;
+          runtime.quality = agentId === "quality" ? `质检状态：${status}` : runtime.quality;
+          markAgent(agentId, { status, progress, risk, enterable: true });
+          if (index === steps.length - 1) {
+            runtime.running = false;
+            runtime.agents[agentId].active = false;
+            runtime.message = "运行状态：Fallback 演示已完成。启动 FastAPI 后可查看真实 output 和 logs。";
+            renderAll();
+          }
+        }, index * 650);
+        runtime.timers.push(timer);
+      });
+    }
+
+    function goTo(page) {
+      getTaskValues();
+      renderAll();
+      document.querySelectorAll(".page").forEach((el) => el.classList.toggle("active", el.id === page));
+      document.querySelectorAll(".nav-pill").forEach((el) => el.classList.toggle("active", el.dataset.page === page));
+      history.replaceState(null, "", `#${page}`);
+      updateTopStatus(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (remoteState.runId && agents.some((agent) => agent.id === page)) {
+        loadAgentArtifact(page).then(() => {
+          renderAll();
+          document.querySelectorAll(".page").forEach((el) => el.classList.toggle("active", el.id === page));
+        });
+      }
+      if (remoteState.runId && page === "final") {
+        loadFinalResult().then(() => {
+          renderAll();
+          document.querySelectorAll(".page").forEach((el) => el.classList.toggle("active", el.id === page));
+        });
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const pageButton = event.target.closest("[data-page]");
+      if (pageButton) {
+        event.preventDefault();
+        goTo(pageButton.dataset.page);
+        return;
+      }
+      if (event.target.id === "resetDemo") {
+        Object.assign(taskState, defaultTask);
+        Object.entries(defaultTask).forEach(([key, value]) => {
+          const el = document.getElementById(key);
+          if (el) el.value = value;
+        });
+        resetRuntime();
+      }
+      if (event.target.id === "runDemoMain" || event.target.id === "runDemoTop") {
+        startDemoRun();
+      }
+      const preset = event.target.closest("[data-feedback-preset]");
+      if (preset) {
+        const [agentId, message] = preset.dataset.feedbackPreset.split(":");
+        const textarea = document.getElementById(`feedbackMessage-${agentId}`);
+        if (textarea) {
+          textarea.value = message;
+          textarea.focus();
+        }
+      }
+      const feedbackSubmit = event.target.closest("[data-feedback-submit]");
+      if (feedbackSubmit) {
+        const [agentId, rerunFrom] = feedbackSubmit.dataset.feedbackSubmit.split(":");
+        submitFeedback(agentId, rerunFrom);
+      }
+      if (event.target.id === "copyReport") {
+        const text = document.getElementById("final").dataset.report || "";
+        const markCopied = () => {
+          event.target.textContent = "已复制";
+          setTimeout(() => event.target.textContent = "复制报告", 1200);
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(markCopied).catch(() => fallbackCopy(text, markCopied));
+        } else {
+          fallbackCopy(text, markCopied);
+        }
+      }
+      if (event.target.id === "downloadReport") {
+        const text = document.getElementById("final").dataset.report || "";
+        const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "AI会议协作工具竞品分析报告.md";
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    renderAll();
+    const initialPage = location.hash.replace("#", "") || "home";
+    if (pageOrder.includes(initialPage)) {
+      goTo(initialPage);
+    }
+
+    function fallbackCopy(text, onDone) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      document.body.removeChild(area);
+      onDone();
+    }
+  </script>
+</body>
+</html>

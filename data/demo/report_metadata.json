@@ -1,0 +1,20 @@
+{
+  "agent": "writing",
+  "status": "completed",
+  "draft_report_path": "report_draft.md",
+  "report_sections": ["执行摘要", "分析目标与范围", "竞品概览", "多维度对比矩阵", "核心发现", "产品机会点", "风险与信息缺口", "初步建议", "来源清单"],
+  "evidence_chains": [
+    {
+      "claim": "会议内容资产化成为基础趋势",
+      "evidence": ["飞书妙记会议转写与摘要", "钉钉智能会议行动项识别"],
+      "source_links": ["https://example.com/feishu-minutes", "https://example.com/dingtalk-meeting-ai"],
+      "confidence": "medium",
+      "risk_boundary": "公开资料无法验证真实企业转化效果"
+    }
+  ],
+  "risk_disclosures": ["价格口径不完全可比", "用户评论样本不足", "跨品类参照需说明"],
+  "handoff_to_next_agent": {
+    "next_agent": "quality",
+    "materials": ["报告初稿", "核心发现", "机会点证据链", "风险与信息缺口", "来源清单"]
+  }
+}

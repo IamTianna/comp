@@ -1,0 +1,74 @@
+{
+  "agent": "collecting",
+  "status": "completed",
+  "competitors": [
+    {
+      "name": "飞书妙记",
+      "source_packets": [
+        {
+          "title": "飞书妙记产品页",
+          "url": "https://example.com/feishu-minutes",
+          "source_type": "official_site",
+          "retrieved_at": "2026-06-15T00:00:00",
+          "excerpt": "公开资料显示其强调会议转写、智能摘要和内容沉淀。",
+          "credibility": "high",
+          "fields_supported": ["core_features", "ai_capabilities", "use_cases"]
+        }
+      ],
+      "missing_information": ["公开价格口径需要结合企业版本确认"],
+      "source_coverage_score": 86
+    },
+    {
+      "name": "腾讯文档智能助手",
+      "source_packets": [
+        {
+          "title": "腾讯文档智能助手介绍",
+          "url": "https://example.com/tencent-docs-ai",
+          "source_type": "official_site",
+          "retrieved_at": "2026-06-15T00:00:00",
+          "excerpt": "公开资料更强调文档生成、总结、改写和协作编辑。",
+          "credibility": "high",
+          "fields_supported": ["product_positioning", "core_features", "ai_capabilities"]
+        }
+      ],
+      "missing_information": ["会议场景直接资料较少", "用户评论样本不足"],
+      "source_coverage_score": 68
+    },
+    {
+      "name": "钉钉智能会议",
+      "source_packets": [
+        {
+          "title": "钉钉智能会议公开介绍",
+          "url": "https://example.com/dingtalk-meeting-ai",
+          "source_type": "official_site",
+          "retrieved_at": "2026-06-15T00:00:00",
+          "excerpt": "公开资料显示其强调会议纪要、行动项识别和组织流程连接。",
+          "credibility": "high",
+          "fields_supported": ["core_features", "ai_capabilities", "business_model"]
+        }
+      ],
+      "missing_information": ["不同企业版本能力边界需要核对"],
+      "source_coverage_score": 82
+    },
+    {
+      "name": "Notion AI",
+      "source_packets": [
+        {
+          "title": "Notion AI 产品说明",
+          "url": "https://example.com/notion-ai",
+          "source_type": "official_site",
+          "retrieved_at": "2026-06-15T00:00:00",
+          "excerpt": "公开资料显示其强调写作、总结、问答和知识库协作。",
+          "credibility": "high",
+          "fields_supported": ["product_positioning", "ai_capabilities", "pricing_model"]
+        }
+      ],
+      "missing_information": ["中文会议协作场景案例有限"],
+      "source_coverage_score": 78
+    }
+  ],
+  "handoff_to_next_agent": {
+    "next_agent": "structuring",
+    "materials": ["公开资料包", "来源清单", "资料摘录", "信息缺口", "来源可信度标记"]
+  }
+}

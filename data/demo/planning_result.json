@@ -1,0 +1,15 @@
+{
+  "agent": "planning",
+  "status": "completed",
+  "analysis_goal": "围绕 AI 会议协作工具赛道形成用于产品功能规划的竞品分析报告。",
+  "competitor_scope": ["飞书妙记", "腾讯文档智能助手", "钉钉智能会议", "Notion AI"],
+  "dimension_list": ["产品定位", "核心功能", "AI能力", "价格模式", "用户反馈", "商业模式"],
+  "source_scope": ["官网", "产品页", "价格页", "帮助文档", "更新日志", "媒体报道", "应用商店评论", "社交平台公开讨论"],
+  "clarification_needed": false,
+  "clarification_questions": ["正式项目建议确认目标用户群体、目标市场区域和报告篇幅。"],
+  "scope_risk": "Notion AI 更偏知识库和内容协作，可作为跨品类参照，不宜与会议工具完全等价比较。",
+  "handoff_to_next_agent": {
+    "next_agent": "collecting",
+    "materials": ["竞品名单", "搜索关键词", "分析维度", "信息来源范围", "需要优先确认的问题"]
+  }
+}
